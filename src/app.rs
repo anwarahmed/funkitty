@@ -24,6 +24,9 @@ pub const INTRO: f32 = 4.6;
 pub const BYE: f32 = 1.8;
 /// Seconds a party keeps throwing things in the air.
 pub const PARTY: f32 = 7.0;
+/// Seconds a party takes no notice of the keyboard for. Whoever was typing a moment
+/// ago is still typing, and those keys were not meant for its buttons.
+pub const GRACE: f32 = 1.0;
 /// Seconds a caught ball of yarn takes to burst.
 pub const BURST: f32 = 0.35;
 
@@ -1130,6 +1133,9 @@ impl App {
         if matches!(self.screen, Screen::Intro | Screen::Bye) {
             return self.act(Action::Skip);
         }
+        if self.screen == Screen::Party && self.phase_time < GRACE {
+            return;
+        }
         // In the games that are typed, a letter is a letter and nothing else.
         if matches!(&self.task, Some(Task { play: Play::Typing(_) | Play::Yarn(_), .. }) if self.screen == Screen::Play) {
             match key.code {
@@ -1706,6 +1712,13 @@ mod tests {
             app.advance(CHEER);
         }
         assert_eq!(app.screen, Screen::Party);
+        // Whatever is still being typed as the party starts is not for the party:
+        // not the arrows that H and L are, not M for the animations, not Esc.
+        let (marker, theme) = (app.marker, app.theme);
+        type_text(&mut app, "hjklmtsq ");
+        press(&mut app, KeyCode::Enter);
+        press(&mut app, KeyCode::Esc);
+        assert_eq!((app.screen, app.marker, app.theme, app.animations, app.sound), (Screen::Party, marker, theme, true, true));
         let party = app.party.as_ref().unwrap();
         let gift = party.gift.unwrap();
         assert!(app.gifts.earned[gift] && app.gifts.worn[gift] && app.gifts.count() == 1);
@@ -1713,9 +1726,11 @@ mod tests {
         assert!(app.speaker.heard.iter().any(|s| matches!(s, Sound::Fanfare(_))));
         let said = &app.speaker.said;
         assert!(said[said.len() - 2].starts_with("party-") && said[said.len() - 1].starts_with("gift-"), "{said:?}");
-        // The gift is unwrapped a moment later.
+        // The gift is unwrapped a moment later, and by then the keys are heard again.
         app.advance(1.0);
         assert!(app.speaker.heard.contains(&Sound::Gift));
+        press(&mut app, KeyCode::Esc);
+        assert_eq!(app.screen, Screen::Home);
     }
 
     #[test]

@@ -114,6 +114,10 @@ mouse moves it to whatever it is over.
   the home screen (`T`, `S`, `M`, `Q`, `E`, and `H` `J` `K` `L` as arrows) are not
   commands there; only `Esc` and `Tab` are. Easy story time is the same, because its
   answers are letters. Ctrl with a letter does nothing anywhere, except `Ctrl-C`.
+- **A party takes no notice of the keyboard for its first second** (`app::GRACE`).
+  Whoever was typing when it began is still typing, and without this a stray `L`
+  moved the marker, `M` switched the animations off and `Esc` ended the party
+  before it was seen. The mouse is heard at once. A script has to wait it out.
 - **Esc does not quit on the home screen; only Q does** (the user asked for this in
   fungeo), and Q is a goodbye wave before the program ends.
 - **The keyboard on the screen** makes the typing games playable by mouse (the user

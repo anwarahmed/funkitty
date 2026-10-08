@@ -207,11 +207,13 @@ else
     }
     # Types every letter there is. One of them is the right one, the others cost nothing.
     alphabet() { keys a b c d e f g h i j k l m n o p q r s t u v w x y z; }
-    # Does $1 over and over until the party comes, which shows "Play again".
+    # Does $1 over and over until the party comes, which shows "Play again". A party
+    # takes no notice of the keyboard for its first second, so that what was still
+    # being typed does not press its buttons; this waits that out.
     until_the_party() {
         tries=0
         while [ "$tries" -lt 80 ]; do
-            if screen | grep -qF 'Play again'; then return 0; fi
+            if screen | grep -qF 'Play again'; then sleep 1.3; return 0; fi
             "$1"
             sleep 0.4
             tries=$((tries + 1))
@@ -280,6 +282,7 @@ else
     has "gifts: the first one is kept" "earned=" "$(grep -x 'earned=..*' "$TMP/xdg/funkitty/gifts" 2>/dev/null)"
 
     # The party's buttons with the arrows, then the dressing room with the mouse.
+    sleep 1.3
     keys Right Right Enter
     expect "dress up: the arrows and Enter go there from the party" "Gifts: 1 of 12"
     expect "dress up: the gift is there" "$gift"

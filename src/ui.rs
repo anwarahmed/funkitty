@@ -1162,6 +1162,7 @@ mod tests {
             press(&mut app, KeyCode::Char(' '));
         }
         assert_eq!((app.screen, app.marker), (Screen::Party, Some(Action::Again)));
+        app.advance(crate::app::GRACE);
         let lines = screen(&mut app, 120, 40);
         assert!(has(&lines, "Play again") && has(&lines, "More games") && has(&lines, "Dress up") && has(&lines, "A gift for Pink Kitty: "));
         press(&mut app, KeyCode::Right);
