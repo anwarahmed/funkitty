@@ -185,14 +185,18 @@ Pink Kitty. Let's have fun!", "Can you type lamb?", "Well done."
 
 What no recognizer can say is whether she sounds *nice*. That needs a person.
 
+## Changed since
+
+- **Gifts reset on every start** (0.1.1). 0.1.0 kept them between runs, which was
+  my choice: fungeo's stars reset because the owner had asked for that, but a
+  dressing room that empties seemed worse. Having seen it, the owner asked for the
+  same as fungeo. Nothing about the gifts is written down now.
+
 ## Decisions that were mine, not the owner's
 
 These were not asked for or answered. They are easy to change, and each is where a
 second opinion is most likely.
 
-- **Gifts are kept between runs.** fungeo's stars reset on every start because the
-  owner asked for that; a dressing room that empties seemed worse. `funkitty reset`
-  empties it.
 - **One level for all four games**, chosen on the home screen and remembered.
 - **Twelve gifts**, and a heart for each game after that.
 - **Esc does not leave the game from the home screen**, as in fungeo; Q does, after

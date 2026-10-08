@@ -1,6 +1,5 @@
 //! `App`: where the player is, what every key, click and tick of the clock does, the
-//! four games, the celebrations, and the gifts that are kept between runs. Draws
-//! nothing.
+//! four games, the celebrations, and the gifts. Draws nothing.
 
 use std::f32::consts::{PI, TAU};
 use std::path::PathBuf;
@@ -316,7 +315,9 @@ pub struct Particle {
 
 pub const BALLOON: &str = "balloon";
 
-/// The gifts she has been given and the ones she has on. They are kept between runs.
+/// The gifts she has been given since the game was started, and the ones she has on.
+/// They are not kept: every start is an empty dressing room, which is what the user
+/// asked for, as with fungeo's stars.
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]
 pub struct Gifts {
     pub earned: [bool; GIFTS.len()],
@@ -326,57 +327,22 @@ pub struct Gifts {
 }
 
 impl Gifts {
-    /// `gifts` in the state directory.
-    pub fn path() -> PathBuf {
-        crate::update::state_dir().join("gifts")
-    }
-
     pub fn count(&self) -> usize {
         self.earned.iter().filter(|&&e| e).count()
     }
 
-    /// Lines of `name=value`. Anything missing or not understood is left out.
-    pub fn parse(text: &str) -> Gifts {
+    /// Her having and wearing these already: names as `words::slug` makes them, with
+    /// commas between, or `all`. Only for looking at the dressing room without playing
+    /// for it (`FUNKITTY_GIFTS`, which `docs/screenshot.sh` sets).
+    pub fn named(names: &str) -> Gifts {
         let mut gifts = Gifts::default();
-        let listed = |value: &str| {
-            let mut set = [false; GIFTS.len()];
-            for name in value.split(',') {
-                if let Some(i) = GIFTS.iter().position(|gift| words::slug(gift.name) == name.trim()) {
-                    set[i] = true;
-                }
+        for (i, gift) in GIFTS.iter().enumerate() {
+            if names == "all" || names.split(',').any(|name| name.trim() == words::slug(gift.name)) {
+                gifts.earned[i] = true;
+                gifts.toggle(i);
             }
-            set
-        };
-        for line in text.lines() {
-            match line.split_once('=').map(|(k, v)| (k.trim(), v.trim())) {
-                Some(("earned", v)) => gifts.earned = listed(v),
-                Some(("worn", v)) => gifts.worn = listed(v),
-                Some(("hearts", v)) => gifts.hearts = v.parse().unwrap_or(0),
-                _ => {}
-            }
-        }
-        // She cannot wear what she was never given.
-        for i in 0..GIFTS.len() {
-            gifts.worn[i] &= gifts.earned[i];
         }
         gifts
-    }
-
-    pub fn format(&self) -> String {
-        let listed = |set: &[bool]| GIFTS.iter().zip(set).filter(|&(_, &on)| on).map(|(gift, _)| words::slug(gift.name)).collect::<Vec<_>>().join(",");
-        format!("earned={}\nworn={}\nhearts={}\n", listed(&self.earned), listed(&self.worn), self.hearts)
-    }
-
-    pub fn load(path: &std::path::Path) -> Gifts {
-        Gifts::parse(&std::fs::read_to_string(path).unwrap_or_default())
-    }
-
-    /// Failing to save is not worth interrupting a game for.
-    pub fn save(&self, path: &std::path::Path) {
-        if let Some(dir) = path.parent() {
-            let _ = std::fs::create_dir_all(dir);
-        }
-        let _ = std::fs::write(path, self.format());
     }
 
     /// Puts a gift on, or takes it off. She wears one scarf pattern at a time.
@@ -402,7 +368,6 @@ pub struct App {
     pub task: Option<Task>,
     pub party: Option<Party>,
     pub gifts: Gifts,
-    pub gifts_path: Option<PathBuf>,
     pub settings_path: Option<PathBuf>,
     /// The button Enter presses. It follows the arrow keys and the mouse.
     pub marker: Option<Action>,
@@ -454,7 +419,6 @@ impl App {
             task: None,
             party: None,
             gifts,
-            gifts_path: None,
             settings_path: None,
             marker: None,
             bubble: String::new(),
@@ -552,12 +516,6 @@ impl App {
     fn save_settings(&self) {
         if let Some(path) = &self.settings_path {
             Settings { theme: self.theme, update: self.auto_update, animations: self.animations, sound: self.sound, level: self.level }.save(path);
-        }
-    }
-
-    fn save_gifts(&self) {
-        if let Some(path) = &self.gifts_path {
-            self.gifts.save(path);
         }
     }
 
@@ -961,7 +919,6 @@ impl App {
             }
             None => self.gifts.hearts += 1,
         }
-        self.save_gifts();
         let headline = self.rng.pick(&HEADLINES);
         self.party = Some(Party { fun, headline, gift, age: 0.0, emit: 0.0 });
         self.screen = Screen::Party;
@@ -992,7 +949,6 @@ impl App {
             return;
         }
         self.gifts.toggle(gift);
-        self.save_gifts();
         self.play(Sound::Star);
         if self.gifts.worn[gift] {
             self.feel(Mood::Love, 1.2);
@@ -1646,12 +1602,9 @@ mod tests {
     }
 
     #[test]
-    fn gifts_survive_a_round_trip_and_bad_input() {
-        let mut gifts = Gifts::default();
-        assert_eq!(Gifts::parse(&gifts.format()), gifts);
-        gifts.earned = [true; GIFTS.len()];
-        gifts.hearts = 4;
-        // One scarf at a time: the second takes the first one's place.
+    fn one_scarf_at_a_time_and_nothing_worn_that_was_not_given() {
+        let mut gifts = Gifts { earned: [true; GIFTS.len()], ..Gifts::default() };
+        // The second scarf takes the first one's place.
         let scarves: Vec<usize> = (0..GIFTS.len()).filter(|&i| GIFTS[i].scarf).collect();
         gifts.toggle(scarves[0]);
         gifts.toggle(0);
@@ -1659,22 +1612,36 @@ mod tests {
         assert!(!gifts.worn[scarves[0]] && gifts.worn[scarves[1]] && gifts.worn[0]);
         gifts.toggle(0);
         assert!(!gifts.worn[0]);
-        assert_eq!(Gifts::parse(&gifts.format()), gifts);
         assert_eq!(gifts.count(), GIFTS.len());
-
-        // Nonsense is left out, and nothing is worn that was not given.
-        let odd = Gifts::parse("earned=crown,teapot,,bell\nworn=crown,flower\nhearts=many\nmore=1\n");
-        assert_eq!((odd.count(), odd.hearts), (2, 0));
-        assert_eq!(odd.worn.iter().filter(|&&w| w).count(), 1);
         let mut none = Gifts::default();
         none.toggle(3);
         assert_eq!(none, Gifts::default());
 
-        let dir = scratch("gifts");
-        let path = dir.join("deeper/gifts");
-        assert_eq!(Gifts::load(&path), Gifts::default());
-        gifts.save(&path);
-        assert_eq!(Gifts::load(&path), gifts);
+        // By name, for a picture of the dressing room: nonsense is left out.
+        let some = Gifts::named("crown, teapot,,bell");
+        assert_eq!((some.count(), some.worn, some.hearts), (2, some.earned, 0));
+        let all = Gifts::named("all");
+        assert_eq!((all.count(), all.worn.iter().filter(|&&w| w).count()), (GIFTS.len(), GIFTS.len() - 2));
+        assert_eq!(Gifts::named(""), Gifts::default());
+    }
+
+    /// The user asked for the gifts to start afresh every time, as fungeo's stars do.
+    #[test]
+    fn nothing_about_the_gifts_is_written_down() {
+        let dir = scratch("fresh");
+        let mut app = app();
+        app.settings_path = Some(dir.join("settings"));
+        app.start(Game::Says);
+        app.celebrate();
+        let gift = app.party.as_ref().unwrap().gift.unwrap();
+        app.act(Action::Dress);
+        app.act(Action::Wear(gift));
+        app.act(Action::Theme);
+        assert_eq!(app.gifts.count(), 1);
+        // The settings are remembered, and they are the only file there is.
+        let files: Vec<String> = std::fs::read_dir(&dir).unwrap().flatten().map(|entry| entry.file_name().to_string_lossy().into_owned()).collect();
+        assert_eq!(files, ["settings"]);
+        assert_eq!(self::app().gifts, Gifts::default());
         std::fs::remove_dir_all(dir).unwrap();
     }
 
@@ -1995,10 +1962,8 @@ mod tests {
     }
 
     #[test]
-    fn the_dressing_room_puts_gifts_on_and_off_and_remembers() {
-        let dir = scratch("dress");
+    fn the_dressing_room_puts_gifts_on_and_off() {
         let mut app = app();
-        app.gifts_path = Some(dir.join("gifts"));
         press(&mut app, KeyCode::Char('5'));
         assert_eq!((app.screen, app.marker, app.bubble.as_str()), (Screen::Dress, Some(Action::Back), "Play a game to win a gift!"));
         app.act(Action::Wear(2));
@@ -2009,18 +1974,15 @@ mod tests {
         app.start(Game::Says);
         app.celebrate();
         let gift = app.party.as_ref().unwrap().gift.unwrap();
-        assert_eq!(Gifts::load(&dir.join("gifts")), app.gifts);
         app.act(Action::Dress);
         assert_eq!((app.marker, app.bubble.as_str()), (Some(Action::Wear(gift)), "Let's dress up!"));
         app.act(Action::Wear(gift));
         assert!(!app.gifts.worn[gift] && app.speaker.heard.last() == Some(&Sound::Star));
-        assert_eq!(Gifts::load(&dir.join("gifts")), app.gifts);
         app.act(Action::Wear(gift));
         assert!(app.gifts.worn[gift] && app.mood == Mood::Love && app.last_phrase.starts_with("dress-"));
         assert_eq!(app.look().eyes, Eyes::Hearts);
         assert!(app.look().worn[gift]);
         app.act(Action::Wear(99));
-        std::fs::remove_dir_all(dir).unwrap();
     }
 
     #[test]

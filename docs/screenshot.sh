@@ -21,12 +21,9 @@ TMP=$(mktemp -d)
 T() { tmux -L funkitty-shot "$@"; }
 trap 'T kill-server 2>/dev/null || true; rm -rf "$TMP"' EXIT
 
-# SHOT_GIFTS: what the gifts file holds when the game starts (see `Gifts::format`).
-if [ -n "${SHOT_GIFTS:-}" ]; then
-    mkdir -p "$TMP/xdg/funkitty"
-    printf '%b' "$SHOT_GIFTS" > "$TMP/xdg/funkitty/gifts"
-fi
-T -f /dev/null new-session -d -s shot -x "$COLS" -y "$ROWS" "env COLORTERM=truecolor XDG_STATE_HOME='$TMP/xdg' XDG_CONFIG_HOME='$TMP/config' FUNKITTY_NO_UPDATE=1 FUNKITTY_NO_SOUND=1 '$BIN' $OPTIONS; sleep 30"
+# SHOT_GIFTS: gifts she has on from the start (their names in lower case with dashes,
+# commas between, or `all`), for a picture of the dressing room.
+T -f /dev/null new-session -d -s shot -x "$COLS" -y "$ROWS" "env COLORTERM=truecolor XDG_STATE_HOME='$TMP/xdg' XDG_CONFIG_HOME='$TMP/config' FUNKITTY_NO_UPDATE=1 FUNKITTY_NO_SOUND=1 FUNKITTY_GIFTS='${SHOT_GIFTS:-}' '$BIN' $OPTIONS; sleep 30"
 sleep 1
 for key in "$@"; do
     case $key in

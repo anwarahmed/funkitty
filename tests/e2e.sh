@@ -8,7 +8,7 @@
 #      from file:// (needs curl)
 #   3. the game itself in detached tmux sessions (skipped when tmux is missing):
 #      the opening, the home screen, each of the four games played to its party by
-#      keyboard, story time and the dressing room by mouse, the gifts that are kept,
+#      keyboard, story time and the dressing room by mouse, the gifts that a new start is without,
 #      and the sounds and Pink Kitty's voice (played by stand-ins that only note what
 #      they were given)
 #
@@ -41,7 +41,7 @@ VERSION=$(sed -n 's/^version = "\(.*\)"$/\1/p' Cargo.toml | head -n 1)
 # ---------------------------------------------------------- command line ----
 
 has "--version" "funkitty $VERSION (" "$("$BIN" --version)"
-has "--help" "funkitty reset" "$("$BIN" --help)"
+has "--help" "funkitty update" "$("$BIN" --help)"
 has "an unknown option is refused" "unknown argument" "$("$BIN" --nonsense 2>&1)"
 has "an unknown theme is refused" "--theme needs one of" "$("$BIN" --theme plaid 2>&1)"
 has "needs a terminal" "needs a terminal" "$("$BIN" </dev/null 2>&1)"
@@ -56,10 +56,7 @@ has "a checkout never updates itself" "running from a source checkout" "$("$BIN"
 has "a bad level is refused" "--level needs easy, medium or hard" "$("$BIN" --level huge 2>&1)"
 XDG_STATE_HOME="$TMP/xdg-anim" "$BIN" --level hard </dev/null >/dev/null 2>&1
 is "--level hard is remembered" "level=hard" "$(grep -x 'level=hard' "$TMP/xdg-anim/funkitty/settings" 2>/dev/null)"
-mkdir -p "$TMP/xdg-reset/funkitty"
-printf 'earned=crown,bell\nworn=crown\nhearts=2\n' > "$TMP/xdg-reset/funkitty/gifts"
-has "reset: says what it did" "given all her gifts back" "$(XDG_STATE_HOME="$TMP/xdg-reset" "$BIN" reset)"
-is "reset: the gifts are gone" "earned=" "$(head -n 1 "$TMP/xdg-reset/funkitty/gifts")"
+has "reset: there is no such command now" "unknown argument 'reset'" "$("$BIN" reset 2>&1)"
 lines=$("$BIN" voice-lines)
 has "voice-lines: the letters" "letter-a	A." "$lines"
 has "voice-lines: the phrases" "praise-1	Good job!" "$lines"
@@ -279,7 +276,6 @@ else
     expect "Kitty says: five letters typed bring the party" "Play again"
     expect "Kitty says: and a gift" "A gift for Pink Kitty: "
     gift=$(screen | sed -n 's/.*A gift for Pink Kitty: \(.*\)!.*/\1/p' | head -n 1)
-    has "gifts: the first one is kept" "earned=" "$(grep -x 'earned=..*' "$TMP/xdg/funkitty/gifts" 2>/dev/null)"
 
     # The party's buttons with the arrows, then the dressing room with the mouse.
     sleep 1.3
@@ -290,7 +286,6 @@ else
     click "$gift"
     sleep 0.4
     absent "mouse: a click takes the gift off" "✓"
-    is "dress up: taken off is remembered" "worn=" "$(grep -x 'worn=' "$TMP/xdg/funkitty/gifts" 2>/dev/null)"
     click "$gift"
     expect "mouse: and a click puts it on again" "✓"
     click "Esc Back"
@@ -345,18 +340,15 @@ else
     keys q
     expect "home: Q quits cleanly, after a wave" "EXIT=0"
 
-    # The gifts are kept between runs, until they are given back.
+    # Every start is an empty dressing room: the four gifts won above are gone, and
+    # nothing about them was written down.
     start "$TMP/xdg" "'$BIN'" --no-intro
-    expect "gifts: a new start still has them" "Gifts: 4 of 12"
+    expect "gifts: a new start has none" "Gifts: 0 of 12"
+    if [ -e "$TMP/xdg/funkitty/gifts" ]; then fail "gifts: a gifts file was written"; else pass "gifts: nothing is kept"; fi
     keys 2
     expect "game: starts again" "Tab Say again"
     keys C-c
     expect "game: Ctrl-C quits at once" "EXIT=0"
-    XDG_STATE_HOME="$TMP/xdg" "$BIN" reset >/dev/null
-    start "$TMP/xdg" "'$BIN'" --no-intro
-    expect "gifts: given back, there are none" "Gifts: 0 of 12"
-    keys q
-    expect "gifts: quits cleanly" "EXIT=0"
 
     # Sound: the system's player is asked to play a file for the opening, for what
     # Pink Kitty says and for a letter typed. Stand-ins for every player it might look
