@@ -4,7 +4,9 @@
 the terminal (TUI), a dressing room for the gifts they win, and a celebration after
 everything. Pink Kitty speaks. Keyboard and mouse both do everything. Rust + ratatui,
 targets macOS and Linux. `README.md` is for players and parents; this file is for
-whoever changes the code.
+whoever changes the code. [docs/DESIGN.md](docs/DESIGN.md) is the longer record of
+how it came to be this way: what was asked for, the options, what was tried and
+thrown away, and the voice comparison. Keep both current.
 
 ## Commands
 
@@ -132,8 +134,9 @@ mouse moves it to whatever it is over.
   sample against ffmpeg's.
 - **The voice's licence matters.** The clips are distributed with the program, so the
   Piper voice must be one whose training data allows that. The current voice and its
-  licence are named at the top of `tools/voice.py`. `en_US-hfc_female` was clearer in
-  tests but its data is CC BY-NC-SA, so it was not used.
+  licence are named at the top of `tools/voice.py` and credited in `voice/README.md`:
+  `en_US-libritts_r-medium`, reader 20, CC BY 4.0. `en_US-hfc_female` was the first
+  choice until its licence was read (CC BY-NC-SA). `docs/DESIGN.md` has the scores.
 - **What she says is always in her bubble too.** So the game is the same with the
   sound off or with no player installed, and a child sees the words she hears. A word
   that would only be heard (Hard "Kitty says") is shown when she cannot be heard
@@ -157,8 +160,9 @@ mouse moves it to whatever it is over.
 - **Animations off** (`M`) means nothing waits: no opening, no flight of the treat, no
   goodbye, balls of yarn simply sit there, a story waits for "Next", and the screen is
   only redrawn on input.
-- **Particles are drawn only on empty cells**, behind or in front, so nothing covers a
-  word. There are never more than 600.
+- **Particles are drawn only on empty cells with empty cells beside them**, behind or
+  in front, so nothing covers a word or sits in the space between two words and
+  reads as part of them. There are never more than 600.
 - **Self-update** is the sister projects' design exactly: a `VERSION` file from the
   latest release (no GitHub API, so no rate limit), a `share/funkitty/managed-by`
   marker by which Homebrew and pacman switch it off, and a check at most once a day

@@ -188,7 +188,8 @@ cargo clippy --all-targets -- -D warnings
 cargo build --release && tests/e2e.sh        # the built program in tmux, install.sh, the updater
 ```
 
-[CLAUDE.md](CLAUDE.md) describes how the code is laid out and why, and
+[CLAUDE.md](CLAUDE.md) describes how the code is laid out and why,
+[docs/DESIGN.md](docs/DESIGN.md) how the game came to be designed this way, and
 [RELEASING.md](RELEASING.md) how a release is made.
 
 ## License
