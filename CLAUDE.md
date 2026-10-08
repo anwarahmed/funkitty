@@ -145,10 +145,12 @@ mouse moves it to whatever it is over.
   the state directory and played by `pw-play`/`paplay`/`aplay`/`afplay`. What she says
   queues (`Speaker::say`, `poll`), one thing at a time, at most two waiting; a new
   game hushes her.
-- **Gifts are kept between runs** (`gifts` in the state directory), unlike fungeo's
-  stars, which the user asked to reset. This was my choice, not the user's: a
-  dressing room that empties every start seemed worse. `funkitty reset` gives them
-  back. If the user wants them to reset, `Gifts` simply stops being loaded.
+- **Gifts are not kept.** The user asked (2026-10-08, after 0.1.0) for the gifts to
+  reset every time the game starts, "like fungeo", so `Gifts` lives in memory only
+  and nothing is written. 0.1.0 kept them in a `gifts` file in the state directory
+  and had a `funkitty reset` command; that file is now ignored and the command is
+  gone. `FUNKITTY_GIFTS` (names, or `all`) starts her with gifts on, only so that
+  `docs/screenshot.sh` can show the dressing room.
 - **Words are plain files** in `data/`, as fungeo's questions are. They were written
   by Claude for children of 4 to 10 and not reviewed by a person. Hard words must not
   sound like another word spelled differently, since they are typed by ear.
@@ -179,7 +181,7 @@ mouse moves it to whatever it is over.
   plays every game to its party; a layout that puts a button off the window or on top
   of another fails it, and so does a button the arrows cannot reach.
 - `cargo build --release && tests/e2e.sh`: the real program in tmux on a private
-  socket, by keyboard and by mouse, every game to its party, the gifts file, the
+  socket, by keyboard and by mouse, every game to its party, that a new start has no gifts, the
   sounds and her voice (through stand-in players), and `install.sh` and the updater
   against made-up releases served from `file://`. CI runs it on Linux and macOS.
 - To see it: `docs/screenshot.sh` runs it in tmux on a **private socket** (never the

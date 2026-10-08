@@ -25,7 +25,6 @@ funkitty - fun time with Pink Kitty: little reading and typing games for young c
 
 Usage:
   funkitty                    play
-  funkitty reset              give all of Pink Kitty's gifts back, to win them again
   funkitty update             check for a newer release now and install it
   funkitty update off | on    stop, or resume, checking when the game starts
   funkitty --help | --version
@@ -37,9 +36,9 @@ Options:
   -s, --sound on|off          whether anything is heard (on by default)
       --no-intro              start at the home screen, without the opening
 
-The level, the theme, the animations and the sound are remembered for next time, and
-so are the gifts Pink Kitty has won, in $XDG_STATE_HOME/funkitty
-(~/.local/state/funkitty).
+The level, the theme, the animations and the sound are remembered for next time, in
+$XDG_STATE_HOME/funkitty (~/.local/state/funkitty). The gifts Pink Kitty wins are
+not: every start is an empty dressing room, to fill again.
 
 In the game everything can be clicked. With the keyboard:
   arrows or H J K L, Enter    move the marker and choose
@@ -89,11 +88,6 @@ fn main() -> ExitCode {
                     Some(_) => fail("'update' takes on, off or nothing"),
                 };
             }
-            "reset" => {
-                Gifts::default().save(&Gifts::path());
-                println!("Pink Kitty has given all her gifts back. Every game wins one again.");
-                return ExitCode::SUCCESS;
-            }
             // For tools/voice.py: every line Pink Kitty can say, as a clip's name, a
             // tab and the text.
             "voice-lines" => {
@@ -130,10 +124,11 @@ fn main() -> ExitCode {
     }
     update::before_start(settings.update);
 
-    let gifts_path = Gifts::path();
-    let mut app = App::new(truecolor, settings, Gifts::load(&gifts_path));
+    // Every start is an empty dressing room. (FUNKITTY_GIFTS fills it, for a picture
+    // of it: see docs/screenshot.sh.)
+    let gifts = std::env::var("FUNKITTY_GIFTS").map_or_else(|_| Gifts::default(), |names| Gifts::named(&names));
+    let mut app = App::new(truecolor, settings, gifts);
     app.settings_path = Some(settings_path);
-    app.gifts_path = Some(gifts_path);
     // Found even while sound is off, so that S has something to switch on.
     if std::env::var_os("FUNKITTY_NO_SOUND").is_none() {
         app.speaker = sound::Speaker::find(update::state_dir().join("sounds"));

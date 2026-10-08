@@ -155,8 +155,8 @@ For a grown-up setting it up:
   on Linux and `afplay` on macOS, whichever is there. `S` switches everything off,
   her voice too. What she says is always in her speech bubble as well, so the game
   plays the same in silence; a word that would only be heard is then shown.
-- **The gifts are kept** between runs. `funkitty reset` gives them all back, to be
-  won again. When she has all twelve, a game wins a heart instead.
+- **The gifts are not kept.** Every start is an empty dressing room, to fill again.
+  Should a child win all twelve in one sitting, a game wins a heart instead.
 - **The window** needs to be at least 80 columns by 24 rows, which is the size a
   terminal usually opens at. Pink Kitty is drawn bigger from about 110 by 40, and the
   keyboard on the screen too.
@@ -167,7 +167,7 @@ For a grown-up setting it up:
 
 | What | Where |
 |---|---|
-| Settings, the gifts, generated sound files, the time of the last update check | `~/.local/state/funkitty/` (`$XDG_STATE_HOME`) |
+| Settings, generated sound files, the time of the last update check | `~/.local/state/funkitty/` (`$XDG_STATE_HOME`) |
 
 ## The words and the voice
 
