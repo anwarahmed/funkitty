@@ -1,0 +1,10 @@
+# Short words, three or four letters: what Medium types, and what Easy matches the
+# first letter of. Any number to a line. Each needs a voice clip (tools/voice.py).
+cat dog sun hat bed cup pig hen fox bus car jam egg leg arm toy box bag pen map
+net web bat rat ant bee cow owl bug mud sky sea pan pot jar key lid mop rug top
+van zip bow pie nut fig ice ink jet log
+fish milk cake ball book tree frog duck bird bear lion moon star rain snow leaf
+nest kite boat ship door hand foot nose sock shoe coat ring king drum bell corn
+rice soup plum pear lamb goat deer seal crab swan wolf pony farm park pond hill
+road gate lamp desk bath soap comb jump hop run play sing read clap wave hug
+love kind soft warm blue pink red gold home baby

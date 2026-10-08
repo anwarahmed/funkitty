@@ -1,0 +1,60 @@
+# Everything Pink Kitty says, apart from the words and the stories.
+#
+#   id|what is shown in her speech bubble|what is spoken, when that is spelled differently
+#
+# Ids that end in a number are a group, and she picks one of the group at random.
+# Each needs a voice clip (tools/voice.py).
+hello|Hi! I'm Pink Kitty!
+hello-fun|Let's have fun!
+what-do|What shall we do?
+snack-intro|I'm hungry! Can you feed me?
+says-intro|Listen, and type what I say.
+yarn-intro|Let's play with yarn! Press the letters.
+story-intro|Story time! Pick the word that fits.
+starts-intro|What letter does the word start with?
+dress-intro|Let's dress up!
+dress-empty|Play a game to win a gift!
+type|Can you type
+find|Can you find the letter
+starts|What does this word start with?
+fits|Which word fits?
+yum-1|Yummy!
+yum-2|Yum, tasty!
+yum-3|Delicious!
+yum-4|Thank you!
+yum-5|More please!
+praise-1|Good job!
+praise-2|Yay!
+praise-3|Well done!
+praise-4|Super!
+praise-5|Wow!
+praise-6|Great!
+praise-7|You got it!
+praise-8|Purr-fect!|Perfect!
+praise-9|Amazing!
+praise-10|Nice one!
+praise-11|Hooray!
+praise-12|Fantastic!
+pounce-1|Got it!
+pounce-2|Pounce!
+pounce-3|Wheee!|Whee!
+comfort-1|Try again!
+comfort-2|Almost!
+comfort-3|You can do it!
+party-1|You did it! Good job!
+party-2|Hooray! You are a star!
+party-3|That was so much fun!
+party-4|You are amazing!
+party-5|I am so proud of you!
+party-6|Wow! You are so clever!
+party-7|High five! Well done!
+party-8|Yay! Let's celebrate!
+gift-1|Here is a gift for you!
+gift-2|Look what I got!
+gift-3|A present! Thank you!
+heart|A heart for you!
+dress-1|I love it!
+dress-2|So pretty!
+dress-3|How do I look?
+dress-4|Thank you!
+bye|Bye bye! Come back soon!

@@ -1,0 +1,63 @@
+# Story time: a sentence with a word missing and three words to choose from.
+#
+#   level|sentence with ___ for the missing word|the right word|a wrong one|another
+#
+# Level 2 is Medium and 3 is Hard (Easy is made from the short words). A wrong word
+# must be plainly wrong, not just less likely. Pink Kitty reads the whole sentence
+# aloud once it is right, so each needs a voice clip (tools/voice.py).
+2|Pink Kitty likes to drink ___.|milk|hats|beds
+2|The sun is very ___.|hot|cold|wet
+2|A fish can ___.|swim|read|sing
+2|A bird can ___ in the sky.|fly|dig|swim
+2|Pink Kitty has a pink ___.|scarf|car|tree
+2|I sleep in my ___.|bed|cup|shoe
+2|The frog can ___ very high.|jump|sleep|read
+2|We read a ___ at bedtime.|book|boat|bell
+2|A cow says ___.|moo|meow|quack
+2|A cat says ___.|meow|moo|woof
+2|A dog says ___.|woof|quack|moo
+2|A duck says ___.|quack|meow|woof
+2|I put a hat on my ___.|head|foot|hand
+2|I put socks on my ___.|feet|ears|nose
+2|The moon comes out at ___.|night|day|lunch
+2|Snow is ___.|cold|hot|red
+2|I see with my ___.|eyes|ears|toes
+2|I hear with my ___.|ears|eyes|legs
+2|A kitty has four ___.|legs|hats|cars
+2|Grass is ___.|green|pink|blue
+2|The sky is ___.|blue|green|brown
+2|Pink Kitty loves to eat ___.|fish|rocks|socks
+2|I brush my ___ every day.|teeth|toys|shoes
+2|Rain falls from the ___.|sky|bed|cup
+2|A bee makes ___.|honey|milk|eggs
+2|Apples grow on a ___.|tree|bus|bed
+2|I wave to say ___.|hello|sleep|jump
+2|We eat soup with a ___.|spoon|sock|star
+3|Pink Kitty wrapped her scarf around her neck because it was ___ outside.|cold|loud|purple
+3|Before we cross the road, we look left and ___.|right|under|yesterday
+3|The baby bird hatched out of an ___.|egg|acorn|apple
+3|When it rains and the sun shines, you might see a ___.|rainbow|snowman|pumpkin
+3|A caterpillar turns into a ___.|butterfly|dragon|spider
+3|We wash our hands with soap and ___.|water|butter|sand
+3|The opposite of big is ___.|small|tall|large
+3|The opposite of happy is ___.|sad|glad|funny
+3|Seven days make one ___.|week|month|hour
+3|Bees fly from flower to flower to collect ___.|nectar|butter|pebbles
+3|At night we can see the moon and the ___.|stars|sunshine|rainbows
+3|Pink Kitty said thank you because she is very ___.|polite|sleepy|tall
+3|A baby cat is called a ___.|kitten|puppy|cub
+3|A baby dog is called a ___.|puppy|kitten|calf
+3|Penguins are birds that cannot ___.|fly|swim|walk
+3|We use an umbrella when it ___.|rains|shines|sleeps
+3|Plants need water and ___ to grow.|sunlight|candy|pillows
+3|The first meal of the day is ___.|breakfast|dinner|dessert
+3|After winter comes ___.|spring|autumn|summer
+3|A triangle has ___ sides.|three|four|five
+3|Pink Kitty shared her fish with her friend because sharing is ___.|kind|loud|cold
+3|When we are tired, we go to ___.|sleep|school|swim
+3|Whales live in the ___.|ocean|forest|desert
+3|A library is full of ___.|books|boats|beds
+3|Ice melts when it gets ___.|warm|cold|dark
+3|We say sorry when we make a ___.|mistake|sandwich|rainbow
+3|The sun rises in the ___.|morning|evening|midnight
+3|Honey is made by ___.|bees|ants|birds
