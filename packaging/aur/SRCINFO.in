@@ -1,0 +1,20 @@
+pkgbase = funkitty-bin
+	pkgdesc = Fun time with Pink Kitty: little reading and typing games for young children, in the terminal
+	pkgver = @VERSION@
+	pkgrel = 1
+	url = https://github.com/anwarahmed/funkitty
+	arch = x86_64
+	arch = aarch64
+	license = MIT
+	provides = funkitty
+	conflicts = funkitty
+	options = !strip
+	options = !debug
+	source = funkitty-@VERSION@-LICENSE::https://raw.githubusercontent.com/anwarahmed/funkitty/v@VERSION@/LICENSE
+	sha256sums = @SHA_LICENSE@
+	source_x86_64 = funkitty-@VERSION@-x86_64::https://github.com/anwarahmed/funkitty/releases/download/v@VERSION@/funkitty-x86_64-unknown-linux-musl
+	sha256sums_x86_64 = @SHA_X86_64@
+	source_aarch64 = funkitty-@VERSION@-aarch64::https://github.com/anwarahmed/funkitty/releases/download/v@VERSION@/funkitty-aarch64-unknown-linux-musl
+	sha256sums_aarch64 = @SHA_AARCH64@
+
+pkgname = funkitty-bin
