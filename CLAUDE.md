@@ -142,6 +142,9 @@ mouse moves it to whatever it is over.
   1.65, and at 1.35 and 1.5 with only the pitch raised and not the size of the voice,
   and picked 1.35 (`PITCH` in `tools/voice.py`). The speech recognizer hears fewer
   clips as written at this pitch (338 of 372, from 356); the user kept it knowing that.
+- **The way back from the dressing room is one large button** along the bottom
+  (the user asked, 2026-10-08, since 0.1.2), not the small "Esc Back" of the top row
+  that the games have. It is still called "Esc Back", which `tests/e2e.sh` clicks.
 - **What she says is always in her bubble too.** So the game is the same with the
   sound off or with no player installed, and a child sees the words she hears. A word
   that would only be heard (Hard "Kitty says") is shown when she cannot be heard
