@@ -172,8 +172,11 @@ mouse moves it to whatever it is over.
   big letters, or in small ones (`font::draw_small`: the same shapes, four pixels to
   a cell, a letter three columns by four rows) where big ones are too wide, and all
   three the same way (`ui::alike`). "Next" likewise, and a sentence too long for big
-  letters is in small ones before it is plain. Offered and not wanted: the same for
-  her speech bubble, the home screen's buttons and the levels.
+  letters is in small ones before it is plain. An answer too long even for small
+  letters in a third of the window ("A: butterfly" at 100 columns) leaves all three
+  plain; from 140 columns no answer of the game is that long, and a test says so.
+  Offered and not wanted: the same for her speech bubble, the home screen's buttons
+  and the levels.
 - **A click counts on press; a release with no press before it counts too**, in case
   a terminal only reports the release. This came from funchess.
 - **Animations off** (`M`) means nothing waits: no opening, no flight of the treat, no

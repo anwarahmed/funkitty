@@ -1383,17 +1383,33 @@ mod tests {
             app.start(Game::Story);
             let Some(Play::Quiz(quiz)) = app.task.as_ref().map(|task| &task.play) else { panic!() };
             let options = quiz.items[0].options.clone();
+            let every: Vec<Vec<String>> = quiz.items.iter().map(|item| item.options.to_vec()).collect();
+            let easy = level == Level::Easy;
+            let named = |options: &[String]| -> Vec<String> {
+                let name = |(i, option): (usize, &String)| if easy { option.clone() } else { format!("{}: {option}", (b'A' + i as u8) as char) };
+                options.iter().enumerate().map(name).collect()
+            };
             // Too small a window for letters: every answer in the terminal's text.
             let lines = screen(&mut app, MIN.0, MIN.1);
             assert!(options.iter().all(|option| has(&lines, option)), "{level:?}");
-            // Room for letters: none of them in the terminal's text.
+            // Room for letters: none of them in the terminal's text, unless one is too long for a third of the window.
             for (w, h) in [(100, 36), (140, 42), (206, 45)] {
                 let lines = screen(&mut app, w, h);
-                let &(r, _) = app.buttons.iter().find(|(_, a)| *a == Action::Pick(0)).unwrap();
+                let places: Vec<Rect> = (0..3).map(|i| app.buttons.iter().find(|(_, a)| *a == Action::Pick(i)).unwrap().0).collect();
+                let r = places[0];
                 assert_eq!(r.height, 6);
+                let how = |options: &[String]| alike(2, named(options).iter().map(String::as_str).zip(places.iter().map(|&r| inside(r))));
                 let boxes = &lines[r.y as usize..r.bottom() as usize];
-                assert!(!boxes.iter().any(|line| line.chars().any(|c| c.is_ascii_alphabetic())), "{level:?} at {w}x{h}: {boxes:#?}");
-                assert!(boxes.iter().any(|line| line.chars().any(|c| "█▀▄▌▐▛▜▙▟".contains(c))), "{level:?} at {w}x{h}");
+                if how(&options) == Words::Plain {
+                    assert!(options.iter().all(|option| has(&lines, option)), "{level:?} at {w}x{h}");
+                } else {
+                    assert!(!boxes.iter().any(|line| line.chars().any(|c| c.is_ascii_alphabetic())), "{level:?} at {w}x{h}: {boxes:#?}");
+                    assert!(boxes.iter().any(|line| line.chars().any(|c| "█▀▄▌▐▛▜▙▟".contains(c))), "{level:?} at {w}x{h}");
+                }
+                // In a wide window no answer of the game is too long.
+                if w >= 140 {
+                    assert!(every.iter().all(|options| how(options) != Words::Plain), "{level:?} at {w}x{h}");
+                }
             }
         }
         // Words too wide for big letters in a third of the window are in small ones.
