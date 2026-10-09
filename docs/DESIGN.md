@@ -142,7 +142,7 @@ owner chose generated clips.
 
 **How.** `words::spoken()` lists every line: 26 letters, about 220 words, about 55
 phrases, 56 stories, 372 in all. `tools/voice.py` has Piper say each, raises the
-pitch by 1.14 and slows it by 1.12 (she is a kitty talking to small children), trims
+pitch by 1.35 and slows it by 1.12 (she is a kitty talking to small children), trims
 the silence, evens the loudness and packs the clip as IMA ADPCM at 22,050 samples a
 second. About 3.5 MB. What she says in the game is clips joined with a tenth of a
 second between them, so "Can you type" and "cat" make a sentence.
@@ -191,6 +191,16 @@ What no recognizer can say is whether she sounds *nice*. That needs a person.
   my choice: fungeo's stars reset because the owner had asked for that, but a
   dressing room that empties seemed worse. Having seen it, the owner asked for the
   same as fungeo. Nothing about the gifts is written down now.
+- **A higher voice.** The owner asked for it and chose from seven samples of one
+  sentence: the pitch raised by 1.14 (as it was), 1.25, 1.35, 1.5 and 1.65 the way
+  `tools/voice.py` does it, which makes the voice smaller as it rises, and by 1.35
+  and 1.5 with ffmpeg's `rubberband` keeping the size of the voice. The choice was
+  1.35 the first way. All 372 clips were made again. The recognizer heard 332 as
+  written after eight retakes and 338 after eight more, against 356 at 1.14. The 34
+  left are six letters (I, L, Q, R, V, Z), 27 short words and one story that lost
+  its first "The"; "car", "bag" and three of the letters were heard as "Bye", which
+  looks like the recognizer failing on a short, high sound more than like her saying
+  it wrong. The owner kept 1.35 with that list in hand.
 
 ## Decisions that were mine, not the owner's
 
@@ -204,4 +214,5 @@ second opinion is most likely.
 - **One switch for all sound**, her voice included.
 - **The words, sentences and stories**, all written for this game and read by nobody
   else yet.
-- **Reader 20, and the pitch and pace** of her voice.
+- **Reader 20, and the pace** of her voice. (The pitch has been the owner's since
+  the change above.)

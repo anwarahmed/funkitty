@@ -137,6 +137,11 @@ mouse moves it to whatever it is over.
   licence are named at the top of `tools/voice.py` and credited in `voice/README.md`:
   `en_US-libritts_r-medium`, reader 20, CC BY 4.0. `en_US-hfc_female` was the first
   choice until its licence was read (CC BY-NC-SA). `docs/DESIGN.md` has the scores.
+- **Her pitch is the user's choice.** The user asked (2026-10-08, after 0.1.1) for a
+  higher voice, listened to one sentence at 1.14 (as it was), 1.25, 1.35, 1.5 and
+  1.65, and at 1.35 and 1.5 with only the pitch raised and not the size of the voice,
+  and picked 1.35 (`PITCH` in `tools/voice.py`). The speech recognizer hears fewer
+  clips as written at this pitch (338 of 372, from 356); the user kept it knowing that.
 - **What she says is always in her bubble too.** So the game is the same with the
   sound off or with no player installed, and a child sees the words she hears. A word
   that would only be heard (Hard "Kitty says") is shown when she cannot be heard
@@ -203,11 +208,13 @@ mouse moves it to whatever it is over.
 ## Known gaps
 
 - **Nobody has heard it.** The sound effects were checked as numbers only, and the
-  voice only through a speech recognizer, which hears 356 of the 372 clips as written
+  voice only through a speech recognizer, which hears 338 of the 372 clips as written
   (and what the running game says, joined up, as the sentences they are). Whether she
-  sounds pleasant, and like a kitty a child would like, no test can say. Whoever
+  sounds pleasant, and like a kitty a child would like, no test can say. The user
+  has heard one sample sentence at each pitch offered, not the 372 clips. Whoever
   listens first should expect to find clips to remake: delete them and run
-  `tools/voice.py`, or change the numbers at its top.
+  `tools/voice.py`, or change the numbers at its top. The single letters and short
+  words the recognizer misses are the ones to start with (`tools/voice-check.py`).
 - The animations were only seen as captured frames, not live.
 - Never run by a person on a Mac; CI runs the tests there.
 - The AUR package `funkitty-bin` is rendered for each release but not pushed: the

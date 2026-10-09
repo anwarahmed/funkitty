@@ -30,7 +30,7 @@ import array, json, os, subprocess, sys, tempfile
 
 SPEAKER = 20          # which of the voice's 904 readers she is
 RATE = 22050          # samples a second; src/voice.rs expects exactly this
-PITCH = 1.14          # how much higher than the voice she speaks
+PITCH = 1.35          # how much higher than the voice she speaks
 SLOW = 1.12           # how much slower than the voice she speaks: she talks to small children
 QUIET = 600           # below this (of 32767) is silence, to be cut from both ends
 PEAK = 27000          # every clip is made this loud at its loudest
