@@ -675,10 +675,11 @@ fn party(buf: &mut Buffer, app: &mut App, area: Rect) {
         Some(gift) => format!("A gift for Pink Kitty: {}!", GIFTS[gift].name),
         None => format!("A heart for you! You have {}.", app.gifts.hearts),
     };
-    label(buf, Rect::new(area.x + 1, area.y + head_high, area.width - 2, gift_high), &present, theme.text, usize::from(gift_high > 1));
 
     let middle = Rect::new(area.x, area.y + head_high + gift_high, area.width, area.height - head_high - gift_high - buttons_high - 1);
     kitty(buf, app, middle, size, 0.0);
+    // After her, so that her ears do not cover its letters when she hops.
+    label(buf, Rect::new(area.x + 1, area.y + head_high, area.width - 2, gift_high), &present, theme.text, usize::from(gift_high > 1));
     let row = Rect::new(area.x + 1, area.bottom() - buttons_high - 1, area.width - 2, buttons_high);
     let choices =
         [("Play again", Action::Again, theme.buttons[4]), ("More games", Action::Back, theme.buttons[1]), ("Dress up", Action::Dress, theme.buttons[0])];
@@ -1280,6 +1281,24 @@ mod tests {
             }
             let lines = screen(&mut app, 100, 30);
             assert!(has(&lines, "Esc Back") && has(&lines, "Tab Say again"), "{}", lines[0]);
+        }
+    }
+
+    #[test]
+    fn what_she_won_can_be_read_all_through_every_party() {
+        // In the smallest window she hops into the row the words are on.
+        for &fun in Fun::ALL.iter() {
+            for (gift, won) in GIFTS.iter().enumerate() {
+                let mut app = app();
+                to_the_party(&mut app);
+                let party = app.party.as_mut().unwrap();
+                (party.fun, party.gift) = (fun, Some(gift));
+                for step in 0..60 {
+                    app.advance(0.05);
+                    let lines = screen(&mut app, MIN.0, MIN.1);
+                    assert!(has(&lines, &format!("A gift for Pink Kitty: {}!", won.name)), "{fun:?}, {}, step {step}", won.name);
+                }
+            }
         }
     }
 }

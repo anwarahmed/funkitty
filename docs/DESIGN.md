@@ -204,6 +204,10 @@ What no recognizer can say is whether she sounds *nice*. That needs a person.
 - **A large way back from the dressing room** (0.1.2). The owner asked for it. The
   small "Esc Back" in the top corner, the same as in a game, became one button
   along the bottom, a third of the window wide, like those after a game.
+- **What she won stays readable while she hops** (0.1.2). In an 80x24 window the
+  tips of her ears went over two letters of "A gift for Pink Kitty: ..." for a
+  moment at the start of a party. It was found when CI's end-to-end run read the
+  gift's name at that moment ("B▀▀terfly"). The words are now drawn after her.
 
 ## Decisions that were mine, not the owner's
 
