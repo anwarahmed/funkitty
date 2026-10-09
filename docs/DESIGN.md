@@ -191,7 +191,7 @@ What no recognizer can say is whether she sounds *nice*. That needs a person.
   my choice: fungeo's stars reset because the owner had asked for that, but a
   dressing room that empties seemed worse. Having seen it, the owner asked for the
   same as fungeo. Nothing about the gifts is written down now.
-- **A higher voice.** The owner asked for it and chose from seven samples of one
+- **A higher voice** (0.1.2). The owner asked for it and chose from seven samples of one
   sentence: the pitch raised by 1.14 (as it was), 1.25, 1.35, 1.5 and 1.65 the way
   `tools/voice.py` does it, which makes the voice smaller as it rises, and by 1.35
   and 1.5 with ffmpeg's `rubberband` keeping the size of the voice. The choice was
@@ -201,6 +201,13 @@ What no recognizer can say is whether she sounds *nice*. That needs a person.
   its first "The"; "car", "bag" and three of the letters were heard as "Bye", which
   looks like the recognizer failing on a short, high sound more than like her saying
   it wrong. The owner kept 1.35 with that list in hand.
+- **A large way back from the dressing room** (0.1.2). The owner asked for it. The
+  small "Esc Back" in the top corner, the same as in a game, became one button
+  along the bottom, a third of the window wide, like those after a game.
+- **What she won stays readable while she hops** (0.1.2). In an 80x24 window the
+  tips of her ears went over two letters of "A gift for Pink Kitty: ..." for a
+  moment at the start of a party. It was found when CI's end-to-end run read the
+  gift's name at that moment ("B▀▀terfly"). The words are now drawn after her.
 
 ## Decisions that were mine, not the owner's
 
