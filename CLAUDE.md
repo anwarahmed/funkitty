@@ -166,7 +166,7 @@ mouse moves it to whatever it is over.
   read is drawn in `font.rs`'s big letters wherever it fits (`ui::letters`), each
   letter in its own color: typed, next, still to come.
 - **A story's answer boxes are in letters too.** The user found it odd (2026-10-08,
-  after 0.1.2) that the sentence was huge and the three answers under it were the
+  since 0.1.3) that the sentence was huge and the three answers under it were the
   terminal's small text, and meant the answer boxes: the menus may stay plain. So
   the boxes are six rows tall from a window of 34 rows up, and the answers are in
   big letters, or in small ones (`font::draw_small`: the same shapes, four pixels to
