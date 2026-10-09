@@ -690,9 +690,10 @@ fn party(buf: &mut Buffer, app: &mut App, area: Rect) {
 /// The dressing room: her gifts, to put on and take off.
 fn dress(buf: &mut Buffer, app: &mut App, area: Rect) {
     let theme = app.theme();
-    worded(buf, app, Rect::new(area.x, area.y, 12, 1), Some(Action::Back), theme.panel, "Esc Back", 0);
     centered(buf, area, area.y, "Dress up", theme.text);
-    let stage = stage(Rect::new(area.x, area.y + 1, area.width, area.height - 1), 2);
+    // The way back is one large button under everything, as after a game.
+    let back_high = if area.height >= 50 { 5 } else { 3 };
+    let stage = stage(Rect::new(area.x, area.y + 1, area.width, area.height - 1), back_high + 3);
     kitty(buf, app, stage.kitty, stage.size, 0.0);
     let high = bubble_rows(stage.side.height);
     bubble(buf, Rect::new(stage.side.x, stage.side.y, stage.side.width, high), &app.bubble, theme);
@@ -713,7 +714,10 @@ fn dress(buf: &mut Buffer, app: &mut App, area: Rect) {
         }
     }
     let hearts = if app.gifts.hearts > 0 { format!("   Hearts: {}", app.gifts.hearts) } else { String::new() };
-    centered(buf, stage.below, stage.below.y + 1, &format!("Gifts: {} of {}. Every game wins one.{hearts}", app.gifts.count(), GIFTS.len()), theme.dim);
+    centered(buf, stage.below, stage.below.y, &format!("Gifts: {} of {}. Every game wins one.{hearts}", app.gifts.count(), GIFTS.len()), theme.dim);
+    let wide = (area.width / 3).max(24).min(area.width - 2);
+    let back = Rect::new(area.x + (area.width - wide) / 2, stage.below.bottom() - back_high - 1, wide, back_high);
+    worded(buf, app, back, Some(Action::Back), theme.buttons[1], "Esc Back", 1);
 }
 
 /// The opening and the goodbye: she comes up from the bottom, or waves, under words.
