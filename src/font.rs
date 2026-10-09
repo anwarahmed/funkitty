@@ -2,6 +2,8 @@
 //! read are drawn as 5x7 bitmaps out of half-block characters: `▀` and `▄` give two
 //! square pixels per cell, which makes a letter six columns wide and four rows tall.
 //! Capitals, digits and a little punctuation only.
+//! The same bitmaps are also drawn at half that size, four pixels to a cell, with the
+//! quarter-block characters (`draw_small`): three columns wide and four rows tall.
 
 use ratatui::buffer::Buffer;
 use ratatui::style::Color;
@@ -175,6 +177,48 @@ pub fn draw(buf: &mut Buffer, x: i32, y: i32, text: &str, color: Color, scale: u
     }
 }
 
+/// The sixteen characters that are a cell cut in four: the bits are its top left, top
+/// right, bottom left and bottom right quarters.
+const QUARTERS: [&str; 16] = [" ", "▘", "▝", "▀", "▖", "▌", "▞", "▛", "▗", "▚", "▐", "▜", "▄", "▙", "▟", "█"];
+
+/// Rows of cells a line of small letters takes.
+pub const SMALL_ROWS: u16 = (HEIGHT as u16).div_ceil(2);
+
+/// How many cells wide `text` is in small letters.
+pub fn small_width(text: &str) -> usize {
+    width(text).div_ceil(2)
+}
+
+/// Draws `text` at half the size of `draw`'s smallest: four pixels to a cell, so a
+/// letter is three columns wide and four rows tall. `x` and `y` count those pixels
+/// from the top left of the buffer, and `colors` has one color for each character.
+/// A cell that two letters share takes the color of the one on its left.
+pub fn draw_small(buf: &mut Buffer, x: i32, y: i32, text: &str, colors: &[Color]) {
+    let bitmap = pixels(text);
+    let w = bitmap[0].len() as i32;
+    // Which character each column of the bitmap belongs to.
+    let mut owner = Vec::new();
+    for (i, (_, _, wide)) in text.chars().filter_map(span).enumerate() {
+        owner.extend(std::iter::repeat_n(i, wide + usize::from(i > 0)));
+    }
+    let ink = |px: i32, py: i32| (0..w).contains(&(px - x)) && (0..HEIGHT as i32).contains(&(py - y)) && bitmap[(py - y) as usize][(px - x) as usize];
+    for cy in y.div_euclid(2)..=(y + HEIGHT as i32 - 1).div_euclid(2) {
+        for cx in x.div_euclid(2)..=(x + w - 1).div_euclid(2) {
+            let (px, py) = (cx * 2, cy * 2);
+            let bits = usize::from(ink(px, py)) | usize::from(ink(px + 1, py)) << 1 | usize::from(ink(px, py + 1)) << 2 | usize::from(ink(px + 1, py + 1)) << 3;
+            if bits == 0 {
+                continue;
+            }
+            let left = if ink(px, py) || ink(px, py + 1) { px } else { px + 1 };
+            let color = owner.get((left - x) as usize).and_then(|&i| colors.get(i)).or(colors.last()).copied().unwrap_or(Color::Reset);
+            let (Ok(cx), Ok(cy)) = (u16::try_from(cx), u16::try_from(cy)) else { continue };
+            if let Some(cell) = buf.cell_mut((cx, cy)) {
+                cell.set_symbol(QUARTERS[bits]).set_fg(color);
+            }
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -216,5 +260,19 @@ mod tests {
         // Half a cell lower, and off every edge: nothing panics.
         draw(&mut buf, -3, 1, "WWW", Color::Red, 2);
         draw(&mut buf, 6, -5, "W", Color::Red, 1);
+    }
+
+    #[test]
+    fn small_letters_are_the_same_shapes_at_half_the_size() {
+        use ratatui::layout::Rect;
+        assert_eq!((small_width("A"), small_width("AB"), SMALL_ROWS), (3, 6, 4));
+        let mut buf = Buffer::empty(Rect::new(0, 0, 8, 5));
+        draw_small(&mut buf, 2, 2, "LT", &[Color::Red, Color::Blue]);
+        let lines: Vec<String> = (0..5).map(|y| (0..8).map(|x| buf[(x, y)].symbol().to_string()).collect()).collect();
+        assert_eq!(lines, [" ", " ▌  ▀▛▘ ", " ▌   ▌  ", " ▌   ▌  ", " ▀▀▘ ▘  "].map(|line| format!("{line:8}")));
+        assert_eq!((buf[(1, 1)].fg, buf[(5, 1)].fg), (Color::Red, Color::Blue));
+        // Nothing is drawn off the buffer, on any side.
+        draw_small(&mut buf, -5, -3, "W", &[Color::Red]);
+        draw_small(&mut buf, 13, 7, "W", &[]);
     }
 }

@@ -208,6 +208,16 @@ What no recognizer can say is whether she sounds *nice*. That needs a person.
   tips of her ears went over two letters of "A gift for Pink Kitty: ..." for a
   moment at the start of a party. It was found when CI's end-to-end run read the
   gift's name at that moment ("B▀▀terfly"). The words are now drawn after her.
+- **The answers of a story in letters.** The owner found the terminal's own text
+  odd beside the huge letters. A first try put small letters wherever they fit: her
+  speech bubble, the six games of the home screen, the levels. That was more than
+  was meant ("the menu text can still be plain text ... I mostly mean the answer
+  boxes"), so it was taken back, and what stayed is story time: the three answers
+  and "Next" in big letters, or in small ones where those are too wide, and all
+  three alike. The small letters are the big font at half its size, drawn with the
+  sixteen quarter-block characters. They are narrow, because a quarter of a cell is
+  twice as tall as it is wide, but they read well. Whether every terminal font has
+  those characters was not tried beyond the one the pictures were drawn with.
 
 ## Decisions that were mine, not the owner's
 
