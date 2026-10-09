@@ -88,6 +88,50 @@ fn big_lines(text: &str, r: Rect, scale: usize) -> Option<Vec<String>> {
     (!lines.is_empty() && lines.len() as u16 * line_rows(scale) <= r.height).then_some(lines)
 }
 
+/// The lines `text` makes in small letters, if it fits `r`.
+fn small_lines(text: &str, r: Rect) -> Option<Vec<String>> {
+    let lines = font::wrap(text, r.width as usize * 2)?;
+    (!lines.is_empty() && lines.len() as u16 * font::SMALL_ROWS <= r.height).then_some(lines)
+}
+
+/// Writes `text` in the middle of `r` in small letters, each in the color `paint`
+/// gives it, as `letters` does. Only where `small_lines` says it fits.
+fn small(buf: &mut Buffer, r: Rect, text: &str, paint: &dyn Fn(usize, char) -> (char, Rgb)) {
+    let Some(lines) = small_lines(text, r) else { return };
+    // In quarters of a cell. A line is seven tall, with one between it and the next.
+    let tall = lines.len() as i32 * 8 - 1;
+    let top = r.y as i32 * 2 + (r.height as i32 * 2 - tall) / 2;
+    let mut place = 0;
+    for (i, line) in lines.iter().enumerate() {
+        let (shown, colors): (String, Vec<Color>) = line.chars().enumerate().map(|(j, c)| paint(place + j, c)).map(|(c, fg)| (c, color(fg))).unzip();
+        // Starting on a whole cell, so that most letters have cells of their own.
+        let x = r.x as i32 + (r.width as i32 - font::small_width(line) as i32) / 2;
+        font::draw_small(buf, x * 2, top + i as i32 * 8, &shown, &colors);
+        place += line.chars().count() + 1;
+    }
+}
+
+/// How words are written: as the terminal's own text, in small letters, or in big
+/// ones so many times the font's size.
+#[derive(Clone, Copy, PartialEq, Debug)]
+enum Words {
+    Plain,
+    Small,
+    Big(usize),
+}
+
+/// The largest way of writing, up to big letters of `most` times the font's size, in
+/// which every one of these fits its place. Things side by side are then written
+/// alike: never one in letters and the next in the terminal's text.
+fn alike<'a>(most: usize, places: impl IntoIterator<Item = (&'a str, Rect)>) -> Words {
+    let places: Vec<(&str, Rect)> = places.into_iter().collect();
+    match (1..=most).rev().find(|&scale| places.iter().all(|&(text, r)| big_lines(text, r, scale).is_some())) {
+        Some(scale) => Words::Big(scale),
+        None if places.iter().all(|&(text, r)| small_lines(text, r).is_some()) => Words::Small,
+        None => Words::Plain,
+    }
+}
+
 /// Writes `text` in the middle of `r`, each letter in the color `paint` gives it (by
 /// its place in the text, counting the spaces): in big letters up to `scale` times
 /// the font's size where that fits (`scale` 0 for never), and otherwise as ordinary
@@ -189,15 +233,32 @@ fn button(buf: &mut Buffer, app: &mut App, r: Rect, action: Option<Action>, bg: 
         if marked {
             frame(buf, r, fg);
         }
+    } else if marked && r.width >= 4 {
+        for y in r.top()..r.bottom() {
+            put(buf, r.x, y, "▶", fg, 1);
+            put(buf, r.right() - 1, y, "◀", fg, 1);
+        }
+    }
+    inside(r)
+}
+
+/// The part of a button where its words go: inside its frame, or between its arrows.
+fn inside(r: Rect) -> Rect {
+    if r.height >= 3 && r.width >= 4 {
         Rect::new(r.x + 2, r.y + 1, r.width - 4, r.height - 2)
     } else {
-        if marked && r.width >= 4 {
-            for y in r.top()..r.bottom() {
-                put(buf, r.x, y, "▶", fg, 1);
-                put(buf, r.right() - 1, y, "◀", fg, 1);
-            }
-        }
         Rect::new(r.x + 1.min(r.width), r.y, r.width.saturating_sub(2), r.height)
+    }
+}
+
+/// A button to press in a game, with its words written as `words` says: in letters
+/// like what is read beside it, where `alike` found that they fit.
+fn pressed(buf: &mut Buffer, app: &mut App, r: Rect, action: Option<Action>, bg: Rgb, text: &str, words: Words) {
+    let inside = button(buf, app, r, action, bg);
+    match words {
+        Words::Big(scale) => letters(buf, inside, text, scale, &|_, c| (c, ink(bg))),
+        Words::Small => small(buf, inside, text, &|_, c| (c, ink(bg))),
+        Words::Plain => label(buf, inside, text, ink(bg), 0),
     }
 }
 
@@ -497,6 +558,17 @@ fn yarn(buf: &mut Buffer, app: &mut App, area: Rect) {
     keyboard(buf, app, Rect::new(stage.below.x, stage.below.y + 1, stage.below.width, stage.below.height.saturating_sub(1)), big, false);
 }
 
+/// A story's sentence: in big letters, in small ones where it is too long for those,
+/// and only then in the terminal's own text.
+fn read(buf: &mut Buffer, r: Rect, text: &str, paint: &dyn Fn(usize, char) -> (char, Rgb)) {
+    let text = text.split_whitespace().collect::<Vec<_>>().join(" ");
+    if big_lines(&text, r, 1).is_none() && small_lines(&text, r).is_some() {
+        small(buf, r, &text, paint);
+    } else {
+        letters(buf, r, &text, 3, paint);
+    }
+}
+
 /// Story time: a sentence with a word missing, and three words to choose from.
 fn story(buf: &mut Buffer, app: &mut App, area: Rect) {
     let theme = app.theme();
@@ -508,8 +580,8 @@ fn story(buf: &mut Buffer, app: &mut App, area: Rect) {
 
     let high = match area.height {
         0..34 => 3,
-        34..50 => 5,
-        _ => 7,
+        // Six, not five: the four rows inside its frame that small letters need.
+        _ => 6,
     };
     let stage = stage(area, high + 2);
     kitty(buf, app, stage.kitty, stage.size, 0.0);
@@ -520,25 +592,26 @@ fn story(buf: &mut Buffer, app: &mut App, area: Rect) {
         // The whole sentence, with its word in place and in the color of a right answer.
         let before = text.split(BLANK).next().unwrap_or("").chars().count();
         let word = options[right].chars().count();
-        letters(buf, sentence, &text.replace(BLANK, &options[right]), 3, &|i, c| {
-            (c, if (before..before + word).contains(&i) { theme.good } else { theme.text })
-        });
+        read(buf, sentence, &text.replace(BLANK, &options[right]), &|i, c| (c, if (before..before + word).contains(&i) { theme.good } else { theme.text }));
     } else {
-        letters(buf, sentence, &text, 3, &|_, c| (c, theme.text));
+        read(buf, sentence, &text, &|_, c| (c, theme.text));
     }
 
     let row = Rect::new(stage.below.x + 1, stage.below.y + 1, stage.below.width - 2, high);
     if solved {
         let next = Rect::new(row.x + row.width / 4, row.y, row.width / 2, row.height);
-        worded(buf, app, next, Some(Action::Next), theme.accent, "Next", 1);
+        pressed(buf, app, next, Some(Action::Next), theme.accent, "Next", alike(1, [("Next", inside(next))]));
     } else {
-        for (i, r) in across(row, 3).into_iter().enumerate() {
-            // On Easy the words are letters, and the letter's own key chooses it.
-            let words = if easy { options[i].clone() } else { format!("{}: {}", (b'A' + i as u8) as char, options[i]) };
+        // On Easy the words are letters, and the letter's own key chooses it.
+        let words: Vec<String> = (0..3).map(|i| if easy { options[i].clone() } else { format!("{}: {}", (b'A' + i as u8) as char, options[i]) }).collect();
+        let places = across(row, 3);
+        // The three alike, the one already tried too.
+        let how = alike(2, words.iter().map(String::as_str).zip(places.iter().map(|&r| inside(r))));
+        for (i, r) in places.into_iter().enumerate() {
             if tried[i] {
-                worded(buf, app, r, None, mix(theme.panel, theme.bg, 0.5), &words, 0);
+                pressed(buf, app, r, None, mix(theme.panel, theme.bg, 0.5), &words[i], how);
             } else {
-                worded(buf, app, r, Some(Action::Pick(i)), theme.buttons[i], &words, 2);
+                pressed(buf, app, r, Some(Action::Pick(i)), theme.buttons[i], &words[i], how);
             }
         }
     }
@@ -1300,5 +1373,35 @@ mod tests {
                 }
             }
         }
+    }
+
+    #[test]
+    fn the_answers_of_a_story_are_in_letters_where_there_is_room_and_all_three_alike() {
+        for level in Level::ALL {
+            let mut app = app();
+            app.level = level;
+            app.start(Game::Story);
+            let Some(Play::Quiz(quiz)) = app.task.as_ref().map(|task| &task.play) else { panic!() };
+            let options = quiz.items[0].options.clone();
+            // Too small a window for letters: every answer in the terminal's text.
+            let lines = screen(&mut app, MIN.0, MIN.1);
+            assert!(options.iter().all(|option| has(&lines, option)), "{level:?}");
+            // Room for letters: none of them in the terminal's text.
+            for (w, h) in [(100, 36), (140, 42), (206, 45)] {
+                let lines = screen(&mut app, w, h);
+                let &(r, _) = app.buttons.iter().find(|(_, a)| *a == Action::Pick(0)).unwrap();
+                assert_eq!(r.height, 6);
+                let boxes = &lines[r.y as usize..r.bottom() as usize];
+                assert!(!boxes.iter().any(|line| line.chars().any(|c| c.is_ascii_alphabetic())), "{level:?} at {w}x{h}: {boxes:#?}");
+                assert!(boxes.iter().any(|line| line.chars().any(|c| "█▀▄▌▐▛▜▙▟".contains(c))), "{level:?} at {w}x{h}");
+            }
+        }
+        // Words too wide for big letters in a third of the window are in small ones.
+        let r = Rect::new(0, 0, 28, 4);
+        assert_eq!(alike(2, [("A: FLY", Rect::new(0, 0, 80, 8)), ("B: WALK", Rect::new(0, 0, 80, 8))]), Words::Big(2));
+        assert_eq!(alike(2, [("A: FLY", Rect::new(0, 0, 36, 4)), ("B: WALK", Rect::new(0, 0, 36, 4))]), Words::Big(1));
+        assert_eq!(alike(2, [("A: FLY", r), ("C: SWIM", r)]), Words::Small);
+        assert_eq!(alike(2, [("A: FLY", r), ("C: YESTERDAY", r)]), Words::Plain);
+        assert_eq!(alike(2, [("A: FLY", Rect::new(0, 0, 28, 3))]), Words::Plain);
     }
 }

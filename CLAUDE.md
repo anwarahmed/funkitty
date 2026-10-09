@@ -70,7 +70,7 @@ Single binary crate, no async, no threads. One file per concern in `src/`:
 | `ui.rs`      | All drawing: layouts, her place on each screen, treats, balls of yarn, the keyboard, and the clickable rectangles (`App::buttons`) |
 | `kitty.rs`   | Pink Kitty: drawn out of ellipses and triangles each frame, with her face, paws and gifts |
 | `picture.rs` | `Picture`: square pixels, two to a cell, with empty pixels that keep what is under them |
-| `font.rs`    | The 5x7 bitmap letters, drawn with half-block characters |
+| `font.rs`    | The 5x7 bitmap letters, drawn with half-block characters, and at half that size with quarter-block ones |
 | `voice.rs`   | The clips of `voice/`, built in, and the IMA ADPCM decoder for them |
 | `sound.rs`   | Sound effects made out of notes; `Speaker`, which plays those and queues what she says, through the system's player |
 | `theme.rs`   | The five themes and `Settings` |
@@ -165,6 +165,15 @@ mouse moves it to whatever it is over.
 - **Text size.** The user asked (in fungeo) that text not be small. What is typed and
   read is drawn in `font.rs`'s big letters wherever it fits (`ui::letters`), each
   letter in its own color: typed, next, still to come.
+- **A story's answer boxes are in letters too.** The user found it odd (2026-10-08,
+  after 0.1.2) that the sentence was huge and the three answers under it were the
+  terminal's small text, and meant the answer boxes: the menus may stay plain. So
+  the boxes are six rows tall from a window of 34 rows up, and the answers are in
+  big letters, or in small ones (`font::draw_small`: the same shapes, four pixels to
+  a cell, a letter three columns by four rows) where big ones are too wide, and all
+  three the same way (`ui::alike`). "Next" likewise, and a sentence too long for big
+  letters is in small ones before it is plain. Offered and not wanted: the same for
+  her speech bubble, the home screen's buttons and the levels.
 - **A click counts on press; a release with no press before it counts too**, in case
   a terminal only reports the release. This came from funchess.
 - **Animations off** (`M`) means nothing waits: no opening, no flight of the treat, no
