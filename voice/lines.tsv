@@ -1,7 +1,17 @@
+big	Find the big letter for
+bubbles-intro	Let's pop some bubbles!
 bye	Bye bye! Come back soon!
 comfort-1	Try again!
 comfort-2	Almost!
 comfort-3	You can do it!
+count-apple	How many apples?
+count-balloon	How many balloons?
+count-duck	How many ducks?
+count-fish	How many fish?
+count-flower	How many flowers?
+count-heart	How many hearts?
+count-intro	Let's count!
+count-star	How many stars?
 dress-1	I love it!
 dress-2	So pretty!
 dress-3	How do I look?
@@ -16,6 +26,8 @@ gift-3	A present! Thank you!
 heart	A heart for you!
 hello	Hi! I'm Pink Kitty!
 hello-fun	Let's have fun!
+in-all	How many in all?
+left	Some went away. How many are left?
 letter-a	A.
 letter-b	B.
 letter-c	C.
@@ -42,6 +54,44 @@ letter-w	W.
 letter-x	X.
 letter-y	Y.
 letter-z	Z.
+letters-intro	Big letters and little letters!
+little	Find the little letter for
+makes	makes
+next	What comes next?
+next-intro	Let's find patterns!
+number-0	Zero.
+number-1	One.
+number-10	Ten.
+number-100	One hundred.
+number-11	Eleven.
+number-12	Twelve.
+number-13	Thirteen.
+number-14	Fourteen.
+number-15	Fifteen.
+number-16	Sixteen.
+number-17	Seventeen.
+number-18	Eighteen.
+number-19	Nineteen.
+number-2	Two.
+number-20	Twenty.
+number-25	Twenty-five.
+number-3	Three.
+number-30	Thirty.
+number-35	Thirty-five.
+number-4	Four.
+number-40	Forty.
+number-45	Forty-five.
+number-5	Five.
+number-50	Fifty.
+number-6	Six.
+number-60	Sixty.
+number-7	Seven.
+number-70	Seventy.
+number-8	Eight.
+number-80	Eighty.
+number-9	Nine.
+number-90	Ninety.
+pairs-intro	Find the pairs! Turn over two cards.
 party-1	You did it! Good job!
 party-2	Hooray! You are a star!
 party-3	That was so much fun!
@@ -50,6 +100,11 @@ party-5	I am so proud of you!
 party-6	Wow! You are so clever!
 party-7	High five! Well done!
 party-8	Yay! Let's celebrate!
+pictures-intro	Let's look at pictures!
+plus	plus
+pop-letter	Pop the letter
+pop-rhyme	Pop a word that rhymes with
+pop-word	Pop the word
 pounce-1	Got it!
 pounce-2	Pounce!
 pounce-3	Whee!
@@ -65,8 +120,10 @@ praise-6	Great!
 praise-7	You got it!
 praise-8	Perfect!
 praise-9	Amazing!
+same	Which word is the same?
 says-intro	Listen, and type what I say.
 snack-intro	I'm hungry! Can you feed me?
+spell	What is it? Type its name.
 starts	What does this word start with?
 starts-intro	What letter does the word start with?
 story-a-baby-cat-is-called-a-kitten	A baby cat is called a kitten.
@@ -126,14 +183,18 @@ story-we-wash-our-hands-with-soap-and-water	We wash our hands with soap and wate
 story-whales-live-in-the-ocean	Whales live in the ocean.
 story-when-it-rains-and-the-sun-shines-you-might-see-a-rainbow	When it rains and the sun shines, you might see a rainbow.
 story-when-we-are-tired-we-go-to-sleep	When we are tired, we go to sleep.
+take-away	take away
 type	Can you type
 what-do	What shall we do?
+what-is	What is it?
+where	Where is the
 word-ant	ant.
 word-apple	apple.
 word-arm	arm.
 word-autumn	autumn.
 word-baby	baby.
 word-bag	bag.
+word-bake	bake.
 word-ball	ball.
 word-balloon	balloon.
 word-banana	banana.
@@ -145,6 +206,7 @@ word-bear	bear.
 word-bed	bed.
 word-bee	bee.
 word-bell	bell.
+word-big	big.
 word-bird	bird.
 word-birthday	birthday.
 word-blanket	blanket.
@@ -155,9 +217,11 @@ word-bow	bow.
 word-box	box.
 word-bread	bread.
 word-bridge	bridge.
+word-bright	bright.
 word-brother	brother.
 word-brown	brown.
 word-bug	bug.
+word-bun	bun.
 word-bunny	bunny.
 word-bus	bus.
 word-butter	butter.
@@ -179,6 +243,7 @@ word-clock	clock.
 word-cloud	cloud.
 word-coat	coat.
 word-comb	comb.
+word-cook	cook.
 word-cookie	cookie.
 word-corn	corn.
 word-cow	cow.
@@ -187,7 +252,9 @@ word-cup	cup.
 word-dance	dance.
 word-deer	deer.
 word-desk	desk.
+word-dig	dig.
 word-dinosaur	dinosaur.
+word-dish	dish.
 word-dog	dog.
 word-dolphin	dolphin.
 word-door	door.
@@ -197,16 +264,22 @@ word-duck	duck.
 word-eagle	eagle.
 word-egg	egg.
 word-elephant	elephant.
+word-fall	fall.
 word-family	family.
+word-far	far.
 word-farm	farm.
 word-father	father.
 word-fig	fig.
 word-fish	fish.
+word-flower	flower.
+word-fog	fog.
 word-foot	foot.
 word-forest	forest.
 word-fox	fox.
+word-free	free.
 word-friend	friend.
 word-frog	frog.
+word-fun	fun.
 word-garden	garden.
 word-gate	gate.
 word-giraffe	giraffe.
@@ -215,13 +288,16 @@ word-gold	gold.
 word-goose	goose.
 word-grape	grape.
 word-green	green.
+word-grow	grow.
 word-hand	hand.
 word-happy	happy.
 word-hat	hat.
+word-heart	heart.
 word-hen	hen.
 word-hill	hill.
 word-home	home.
 word-honey	honey.
+word-hook	hook.
 word-hop	hop.
 word-horse	horse.
 word-house	house.
@@ -242,6 +318,7 @@ word-kitten	kitten.
 word-kitty	kitty.
 word-koala	koala.
 word-ladybug	ladybug.
+word-lake	lake.
 word-lamb	lamb.
 word-lamp	lamp.
 word-laugh	laugh.
@@ -252,9 +329,13 @@ word-lid	lid.
 word-light	light.
 word-lion	lion.
 word-log	log.
+word-look	look.
 word-love	love.
+word-luck	luck.
 word-map	map.
+word-mat	mat.
 word-melon	melon.
+word-men	men.
 word-milk	milk.
 word-monkey	monkey.
 word-moon	moon.
@@ -263,9 +344,12 @@ word-mother	mother.
 word-mouse	mouse.
 word-mud	mud.
 word-muffin	muffin.
+word-mug	mug.
 word-music	music.
 word-nest	nest.
 word-net	net.
+word-night	night.
+word-noon	noon.
 word-nose	nose.
 word-nut	nut.
 word-ocean	ocean.
@@ -306,6 +390,7 @@ word-read	read.
 word-red	red.
 word-ribbon	ribbon.
 word-rice	rice.
+word-right	right.
 word-ring	ring.
 word-river	river.
 word-road	road.
@@ -323,13 +408,17 @@ word-shoe	shoe.
 word-sing	sing.
 word-sister	sister.
 word-sky	sky.
+word-sled	sled.
 word-sleep	sleep.
+word-slow	slow.
 word-smile	smile.
 word-snail	snail.
+word-snake	snake.
 word-snow	snow.
 word-soap	soap.
 word-sock	sock.
 word-soft	soft.
+word-soon	soon.
 word-soup	soup.
 word-spider	spider.
 word-spoon	spoon.
@@ -342,6 +431,9 @@ word-sun	sun.
 word-sunshine	sunshine.
 word-swan	swan.
 word-table	table.
+word-tall	tall.
+word-ten	ten.
+word-three	three.
 word-tiger	tiger.
 word-tomato	tomato.
 word-top	top.
@@ -352,13 +444,17 @@ word-truck	truck.
 word-turtle	turtle.
 word-van	van.
 word-wagon	wagon.
+word-wall	wall.
 word-warm	warm.
 word-water	water.
 word-wave	wave.
 word-web	web.
 word-whale	whale.
+word-wig	wig.
 word-window	window.
+word-wing	wing.
 word-winter	winter.
+word-wish	wish.
 word-wolf	wolf.
 word-yellow	yellow.
 word-yogurt	yogurt.

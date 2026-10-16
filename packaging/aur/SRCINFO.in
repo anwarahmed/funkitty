@@ -1,5 +1,5 @@
 pkgbase = funkitty-bin
-	pkgdesc = Fun time with Pink Kitty: little reading and typing games for young children, in the terminal
+	pkgdesc = Fun time with Pink Kitty: little games of reading, typing, counting and patterns for young children, in the terminal
 	pkgver = @VERSION@
 	pkgrel = 1
 	url = https://github.com/anwarahmed/funkitty

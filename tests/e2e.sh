@@ -7,8 +7,9 @@
 #   2. install.sh and the self-updater, against releases made up here and served
 #      from file:// (needs curl)
 #   3. the game itself in detached tmux sessions (skipped when tmux is missing):
-#      the opening, the home screen, each of the four games played to its party by
-#      keyboard, story time and the dressing room by mouse, the gifts that a new start is without,
+#      the opening, the home screen, the first four games, counting and bubbles
+#      played to their parties by keyboard, that every game starts from its key,
+#      story time and the dressing room by mouse, the gifts that a new start is without,
 #      and the sounds and Pink Kitty's voice (played by stand-ins that only note what
 #      they were given)
 #
@@ -217,6 +218,13 @@ else
         done
         return 1
     }
+    # Counting: every digit, one of them the number; then Enter, which is "Next" once
+    # it is right.
+    one_count_step() {
+        keys 1 2 3 4 5 6 7 8 9 0
+        sleep 0.3
+        keys Enter
+    }
     # Story time: tries the three words in turn, and goes on when one was right.
     one_story_step() {
         for word in a b c; do
@@ -303,7 +311,7 @@ else
     expect "snack time: Esc goes home" "Gifts: 2 of 12"
 
     # Yarn balls, with vim's keys for the arrows on the way there.
-    keys h j l k h j Enter
+    keys h j l k h l l Enter
     expect "yarn balls: H J K L move the marker as the arrows do" "Yarn balls"
     if until_the_party alphabet; then pass "yarn balls: six caught bring the party"; else fail "yarn balls: the party never came"; fi
     keys Right Enter
@@ -328,6 +336,29 @@ else
     absent "mouse: Next brings the next story" "Next"
     click "Esc Back"
     expect "mouse: Back goes home from a game" "What shall we do?"
+
+    # The newer games start from their keys, 5 to 9 and 0, and Esc leaves each.
+    for game in "5 Counting" "6 Bubbles" "7 Picture words" "8 Big and little" "9 Pairs" "0 What's next?"; do
+        keys "${game%% *}"
+        expect "${game#* }: starts from its key" "Esc Back"
+        keys Escape
+        expect "${game#* }: Esc goes home" "What shall we do?"
+    done
+
+    # Counting on Medium, by the number keys.
+    keys 5
+    expect "counting: starts with a question" "How many"
+    if until_the_party one_count_step; then pass "counting: five counted bring the party"; else fail "counting: the party never came"; fi
+    keys Escape
+    expect "counting: and a gift" "Gifts: 5 of 12"
+
+    # Bubbles on Easy: every letter, and the one she asks for pops.
+    click "Easy (4-5)"
+    keys 6
+    expect "bubbles: starts" "Pop the letter"
+    if until_the_party alphabet; then pass "bubbles: six popped bring the party"; else fail "bubbles: the party never came"; fi
+    keys Escape
+    expect "bubbles: and a gift" "Gifts: 6 of 12"
 
     T resize-window -t main -x 40 -y 8 2>/dev/null
     expect "window: a tiny one says so" "Please make the window bigger"

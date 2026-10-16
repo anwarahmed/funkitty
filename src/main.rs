@@ -1,6 +1,8 @@
 mod app;
+mod art;
 mod font;
 mod kitty;
+mod lessons;
 mod picture;
 mod sound;
 mod theme;
@@ -21,7 +23,7 @@ use theme::Settings;
 use words::Level;
 
 const USAGE: &str = "\
-funkitty - fun time with Pink Kitty: little reading and typing games for young children
+funkitty - fun time with Pink Kitty: little games of reading, typing, counting and patterns for young children
 
 Usage:
   funkitty                    play
@@ -42,8 +44,10 @@ not: every start is an empty dressing room, to fill again.
 
 In the game everything can be clicked. With the keyboard:
   arrows or H J K L, Enter    move the marker and choose
-  1 2 3 4                     the games: snack time, Kitty says, yarn balls, story time
-  5 dress up   6 surprise     E easy, medium or hard
+  1 to 9, 0                   the games: snack time, Kitty says, yarn balls, story
+                              time, counting, bubbles, picture words, big and little,
+                              pairs, what's next
+  D dress up   R surprise     E easy, medium or hard
   T theme   S sound   M motion (animations)   ? help   Q quit
   Tab                         in a game: Pink Kitty says it again
   Esc                         in a game: back to the home screen

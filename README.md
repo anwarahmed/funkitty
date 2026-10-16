@@ -1,9 +1,9 @@
 # funkitty
 
-Fun time with Pink Kitty: little reading and typing games for young children, in the
-terminal, on Linux and macOS.
+Fun time with Pink Kitty: little games of reading, typing, counting and patterns for
+young children, in the terminal, on Linux and macOS.
 
-![funkitty in a terminal: Pink Kitty, a white kitty in a pink scarf, beside the six big buttons of the home screen](docs/screenshot.png)
+![funkitty in a terminal: Pink Kitty, a white kitty in a pink scarf, beside the twelve big buttons of the home screen](docs/screenshot.png)
 
 Pink Kitty is a white kitty with a big round face and a light pink scarf over her head
 and round her neck. She talks, out loud and in a speech bubble, and she is pleased with
@@ -18,6 +18,19 @@ her a gift to wear. Then the child can play another, or go and come back later.
   and she pounces on it. One that gets past only rolls round again.
 - **Story time.** A sentence with a word missing and three words to choose from. She
   reads the whole sentence out when it is right.
+- **Counting.** How many fish, stars or ducks? Up to five on Easy, ten on Medium, and
+  on Hard little sums: some more come, or some go away.
+- **Bubbles.** Bubbles float up with letters or words on them, and she says which one
+  to pop. Made for practising with the mouse. On Hard, pop a word that rhymes.
+- **Picture words.** Find the picture of the word she says (Easy), pick the word for a
+  picture (Medium), or spell what the picture is (Hard).
+- **Big and little.** Which little letter goes with a big one, and the other way
+  round; on Hard, which word is the same in little letters. The wrong answers are
+  the letters children mix up: b and d, p and q.
+- **Pairs.** Turn the cards over two at a time to find the pairs: pictures, big and
+  little letters, or words that rhyme.
+- **What's next?** A row of pictures in a pattern, counting up or down, the alphabet,
+  or counting in twos, fives and tens: what comes next?
 - **Dress up.** Twelve gifts to win, one for every game finished: a flower, a crown,
   glasses, a balloon, fairy wings, three patterns for her scarf and more. Put them on
   her and take them off again.
@@ -25,8 +38,9 @@ her a gift to wear. Then the child can play another, or go and come back later.
 What it is like:
 
 - **Three levels.** Easy (ages 4 to 5) is one letter at a time, with the key lit up
-  on a keyboard drawn on the screen. Medium (6 to 7) is short words. Hard (8 to 10)
-  is longer words and whole sentences.
+  on a keyboard drawn on the screen, pictures, and counting to five. Medium (6 to 7)
+  is short words, counting to ten and the alphabet. Hard (8 to 10) is longer words,
+  whole sentences, spelling, sums and rhymes.
 - **Nothing can go wrong.** A wrong key costs nothing: she looks surprised for a
   moment and waits. There are no lives, no timer and no score to lose.
 - **A celebration every time, and never the same one twice running.** Six little ones
@@ -133,12 +147,13 @@ funkitty
 
 | | Mouse | Keys |
 |---|---|---|
-| Choose a game | click it | `1` `2` `3` `4`, or arrows (`H` `J` `K` `L`) and `Enter` |
-| Dress up, a surprise game | click them | `5`, `6` |
+| Choose a game | click it | `1` to `9` and `0`, or arrows (`H` `J` `K` `L`) and `Enter` |
+| Dress up, a surprise game | click them | `D`, `R` |
 | Easy, medium or hard | click one | `E` |
 | Type a letter | click it on the keyboard on the screen | the letter |
 | Catch a ball of yarn | click the ball | its letter |
-| Choose a word in story time | click it | `A` `B` `C` or `1` `2` `3`; on Easy, the letter itself |
+| Choose an answer | click it | `A` `B` `C` or `1` `2` `3`; where the answers are letters or numbers, that letter or number (`0` for ten) |
+| Pop a bubble, turn over a card | click it | arrows and `Enter`; on Easy, a bubble's letter |
 | Hear it again | click **Say again** | `Tab` |
 | Back to the home screen | click **Back** | `Esc` |
 | Theme, sound, motion | click them | `T`, `S`, `M` |
@@ -172,13 +187,15 @@ For a grown-up setting it up:
 ## The words and the voice
 
 Everything a child reads, types or hears is in plain text files in [data/](data):
-about 110 short words, 110 longer ones, 40 sentences, 56 stories and what Pink Kitty
-says. They were written for this game with children of 4 to 10 in mind.
+about 110 short words, 110 longer ones, 40 sentences, 56 stories, 20 families of
+rhymes, the pictures (drawn as rows of letters, one for each color) and what Pink
+Kitty says. They were written for this game with children of 4 to 10 in mind.
 
-Her voice is 370 short clips in [voice/](voice), made once with
-[Piper](https://github.com/rhasspy/piper), a text-to-speech program that runs on
-your own computer, and then built into the game. [tools/voice.py](tools/voice.py)
-makes them again when the words change.
+Her voice is about 470 short clips in [voice/](voice), made once with
+[Kokoro](https://huggingface.co/hexgrad/Kokoro-82M), a text-to-speech model that runs
+on your own computer, and then built into the game: its voice "Lily", raised in pitch,
+and a little brighter when she is pleased. [tools/voice.py](tools/voice.py) makes
+them again when the words change.
 
 ## Development
 

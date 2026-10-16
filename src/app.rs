@@ -1,5 +1,6 @@
 //! `App`: where the player is, what every key, click and tick of the clock does, the
-//! four games, the celebrations, and the gifts. Draws nothing.
+//! games, the celebrations, and the gifts. Draws nothing. What the newer games ask
+//! is made in `lessons`.
 
 use std::f32::consts::{PI, TAU};
 use std::path::PathBuf;
@@ -9,6 +10,7 @@ use ratatui::crossterm::event::{KeyCode, KeyEvent, KeyModifiers, MouseButton, Mo
 use ratatui::layout::{Position, Rect};
 
 use crate::kitty::{Arms, Eyes, GIFTS, Look, Mouth};
+use crate::lessons;
 use crate::sound::{FANFARES, Sound, Speaker};
 use crate::theme::{Rgb, Settings, THEMES, Theme};
 use crate::words::{self, BLANK, Level, Rng};
@@ -39,10 +41,23 @@ pub enum Game {
     Yarn,
     /// Pick the word that is missing from the sentence.
     Story,
+    /// How many things there are; on Hard, sums.
+    Count,
+    /// Pop the bubble she asks for: a game for the mouse.
+    Bubbles,
+    /// Words and their pictures.
+    Pictures,
+    /// Big letters and little letters.
+    Letters,
+    /// Turn the cards over two at a time and find the pairs.
+    Pairs,
+    /// What comes next in a row of pictures, numbers or letters.
+    Next,
 }
 
 impl Game {
-    pub const ALL: [Game; 4] = [Game::Snack, Game::Says, Game::Yarn, Game::Story];
+    pub const ALL: [Game; 10] =
+        [Game::Snack, Game::Says, Game::Yarn, Game::Story, Game::Count, Game::Bubbles, Game::Pictures, Game::Letters, Game::Pairs, Game::Next];
 
     pub fn name(self) -> &'static str {
         match self {
@@ -50,7 +65,24 @@ impl Game {
             Game::Says => "Kitty says",
             Game::Yarn => "Yarn balls",
             Game::Story => "Story time",
+            Game::Count => "Counting",
+            Game::Bubbles => "Bubbles",
+            Game::Pictures => "Picture words",
+            Game::Letters => "Big and little",
+            Game::Pairs => "Pairs",
+            Game::Next => "What's next?",
         }
+    }
+
+    /// The key that starts it on the home screen: 1 to 9, then 0.
+    pub fn key(self) -> char {
+        let i = Game::ALL.iter().position(|&game| game == self).unwrap_or(0);
+        if i == 9 { '0' } else { (b'1' + i as u8) as char }
+    }
+
+    /// Whether Tab has her say the question again.
+    pub fn repeats(self) -> bool {
+        !matches!(self, Game::Snack | Game::Yarn | Game::Pairs)
     }
 
     /// The phrase she opens the game with.
@@ -61,6 +93,12 @@ impl Game {
             (Game::Yarn, _) => "yarn-intro",
             (Game::Story, Level::Easy) => "starts-intro",
             (Game::Story, _) => "story-intro",
+            (Game::Count, _) => "count-intro",
+            (Game::Bubbles, _) => "bubbles-intro",
+            (Game::Pictures, _) => "pictures-intro",
+            (Game::Letters, _) => "letters-intro",
+            (Game::Pairs, _) => "pairs-intro",
+            (Game::Next, _) => "next-intro",
         }
     }
 }
@@ -93,6 +131,10 @@ pub enum Action {
     Repeat,
     /// Put a gift on, or take it off.
     Wear(usize),
+    /// Pop the bubble with this number.
+    Pop(usize),
+    /// Turn over one of the cards of pairs.
+    Card(usize),
     /// Past the opening, or the goodbye.
     Skip,
 }
@@ -146,6 +188,26 @@ pub struct Yarn {
     done: Option<f32>,
 }
 
+/// Something shown in a row of pictures.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum Thing {
+    /// The picture of this name, from `art`.
+    Picture(&'static str),
+    /// The same, pale: one that has gone away.
+    Faded(&'static str),
+    /// A plus, or the question mark at the end of a pattern.
+    Sign(char),
+}
+
+/// What a question shows above its answers.
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub enum Show {
+    /// Its text alone, as a sentence.
+    Text,
+    /// Pictures, with its text (when it has any) under them.
+    Things(Vec<Thing>),
+}
+
 #[derive(Debug)]
 pub struct Question {
     /// The sentence, with `BLANK` for the missing word.
@@ -153,8 +215,116 @@ pub struct Question {
     pub options: [String; 3],
     pub right: usize,
     /// What she says before it, and what she reads out once it is right.
-    ask: Vec<String>,
-    read: Vec<String>,
+    pub ask: Vec<String>,
+    pub read: Vec<String>,
+    pub show: Show,
+    /// The answers are names of pictures, and are shown as the pictures.
+    pub pictures: bool,
+    /// Each answer's own key, which then answers it: a letter, a digit. Without them
+    /// the answers are A, B and C.
+    pub keys: Option<[char; 3]>,
+    /// What her speech bubble says while it is asked.
+    pub bubble: String,
+}
+
+/// Bubbles: a bubble rising, with a letter or a word on it.
+#[derive(Debug)]
+pub struct Bubble {
+    /// Which it is, to be clicked by: never two the same in a game.
+    pub id: usize,
+    pub label: String,
+    /// The column it rises in, so that no two are in each other's way.
+    pub lane: usize,
+    /// From 1 at the bottom to 0 at the top; past either it is out of sight.
+    pub y: f32,
+    /// Seconds it takes to rise all the way.
+    rise: f32,
+    /// Which of the theme's colors it is.
+    pub color: usize,
+    /// Seconds since it was popped, while it bursts.
+    pub popped: Option<f32>,
+    /// Seconds left of the wobble of a bubble that was not the one asked for.
+    pub wobble: f32,
+}
+
+#[derive(Debug, Default)]
+pub struct Bubbles {
+    pub bubbles: Vec<Bubble>,
+    pub lanes: usize,
+    /// What she asks for: the label to pop, or on Hard a word to rhyme with.
+    pub target: String,
+    pub popped: usize,
+    pub goal: usize,
+    pub misses: u32,
+    next_id: usize,
+    /// Seconds since the last was popped.
+    done: Option<f32>,
+}
+
+impl Bubbles {
+    /// What she says to ask for one.
+    pub fn phrase(&self, level: Level) -> &'static str {
+        match level {
+            Level::Easy => "pop-letter",
+            Level::Medium => "pop-word",
+            Level::Hard => "pop-rhyme",
+        }
+    }
+
+    /// Whether a bubble with this on it is the one asked for.
+    pub fn fits(&self, label: &str, level: Level) -> bool {
+        if level == Level::Hard {
+            label != self.target && words::family(label).is_some() && words::family(label) == words::family(&self.target)
+        } else {
+            label == self.target
+        }
+    }
+
+    fn rising(&self) -> impl Iterator<Item = &Bubble> {
+        self.bubbles.iter().filter(|bubble| bubble.popped.is_none())
+    }
+}
+
+/// What is on the other side of a card of pairs.
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub enum Face {
+    Picture(&'static str),
+    Text(String),
+}
+
+#[derive(Debug)]
+pub struct Card {
+    pub face: Face,
+    /// Cards with the same number go together.
+    pub pair: usize,
+    pub open: bool,
+    pub matched: bool,
+}
+
+impl Card {
+    pub fn new(face: Face, pair: usize) -> Card {
+        Card { face, pair, open: false, matched: false }
+    }
+
+    /// The clip that says what is on it.
+    fn voice(&self) -> String {
+        match &self.face {
+            Face::Picture(name) => words::word_voice(name),
+            Face::Text(text) if text.chars().count() == 1 => words::letter_voice(text.chars().next().unwrap_or('a')),
+            Face::Text(text) => words::word_voice(text),
+        }
+    }
+}
+
+#[derive(Debug)]
+pub struct Pairs {
+    pub cards: Vec<Card>,
+    pub matched: usize,
+    /// Seconds since two that do not go together were turned over; they are turned
+    /// back after a while, or at the next card.
+    pub showing: Option<f32>,
+    /// Seconds since the last pair was found.
+    done: Option<f32>,
 }
 
 #[derive(Debug)]
@@ -174,6 +344,8 @@ pub enum Play {
     Typing(Typing),
     Yarn(Yarn),
     Quiz(Quiz),
+    Bubbles(Bubbles),
+    Pairs(Pairs),
 }
 
 #[derive(Debug)]
@@ -190,6 +362,8 @@ impl Task {
             Play::Typing(typing) => (typing.at + usize::from(typing.cheer.is_some()), typing.items.len()),
             Play::Yarn(yarn) => (yarn.caught, yarn.goal),
             Play::Quiz(quiz) => (quiz.at + usize::from(quiz.solved.is_some()), quiz.items.len()),
+            Play::Bubbles(bubbles) => (bubbles.popped, bubbles.goal),
+            Play::Pairs(pairs) => (pairs.matched, pairs.cards.len() / 2),
         }
     }
 }
@@ -581,12 +755,15 @@ impl App {
     fn typing(&mut self, game: Game) -> Typing {
         let capitals = |items: Vec<String>| items.into_iter().map(|item| item.to_uppercase()).collect();
         let items = match (game, self.level) {
+            // Hard picture words: what the picture is, spelled.
+            (Game::Pictures, _) => capitals(self.draw(&crate::art::names(), 5)),
             (_, Level::Easy) => self.letters(5),
             (_, Level::Medium) => capitals(self.draw(words::short_words(), 5)),
             (Game::Snack, Level::Hard) => capitals(self.draw(words::sentences(), 3)),
             (_, Level::Hard) => capitals(self.draw(words::long_words(), 5)),
         };
-        Typing { items, at: 0, typed: 0, misses: 0, hidden: game == Game::Says && self.level == Level::Hard, cheer: None }
+        let hidden = (game == Game::Says && self.level == Level::Hard) || game == Game::Pictures;
+        Typing { items, at: 0, typed: 0, misses: 0, hidden, cheer: None }
     }
 
     fn quiz(&mut self) -> Quiz {
@@ -604,6 +781,10 @@ impl App {
                     right: options.iter().position(|&c| c == first).unwrap_or(0),
                     ask: vec!["starts".to_string(), words::word_voice(&word)],
                     read: vec![words::letter_voice(first), words::word_voice(&word)],
+                    show: Show::Text,
+                    pictures: false,
+                    keys: Some(options),
+                    bubble: words::shown("starts").to_string(),
                 });
             }
         } else {
@@ -618,6 +799,10 @@ impl App {
                     right: options.iter().position(|&o| o == story.options[0]).unwrap_or(0),
                     ask: Vec::new(),
                     read: vec![story.voice()],
+                    show: Show::Text,
+                    pictures: false,
+                    keys: None,
+                    bubble: words::shown("fits").to_string(),
                 });
             }
         }
@@ -636,10 +821,19 @@ impl App {
     }
 
     pub fn start(&mut self, game: Game) {
+        let level = self.level;
+        let quiz = |items| Play::Quiz(Quiz { items, at: 0, tried: [false; 3], solved: None, wait: 0.0 });
         let play = match game {
             Game::Snack | Game::Says => Play::Typing(self.typing(game)),
-            Game::Yarn => Play::Yarn(Yarn { balls: Vec::new(), caught: 0, goal: [6, 8, 10][self.level as usize], next_in: 0.4, done: None }),
+            Game::Pictures if level == Level::Hard => Play::Typing(self.typing(game)),
+            Game::Yarn => Play::Yarn(Yarn { balls: Vec::new(), caught: 0, goal: [6, 8, 10][level as usize], next_in: 0.4, done: None }),
             Game::Story => Play::Quiz(self.quiz()),
+            Game::Count => quiz(lessons::counting(&mut self.rng, level)),
+            Game::Pictures => quiz(lessons::pictures(&mut self.rng, level)),
+            Game::Letters => quiz(lessons::letters(&mut self.rng, level)),
+            Game::Next => quiz(lessons::next(&mut self.rng, level)),
+            Game::Bubbles => Play::Bubbles(self.bubbles()),
+            Game::Pairs => Play::Pairs(Pairs { cards: lessons::pairs(&mut self.rng, level), matched: 0, showing: None, done: None }),
         };
         self.task = Some(Task { game, level: self.level, play });
         self.party = None;
@@ -649,7 +843,11 @@ impl App {
         self.speaker.hush();
         self.talk = 0.0;
         self.feel(Mood::Calm, 0.0);
-        self.marker = (game == Game::Story).then_some(Action::Pick(0));
+        self.marker = match &self.task {
+            Some(Task { play: Play::Quiz(_), .. }) => Some(Action::Pick(0)),
+            Some(Task { play: Play::Pairs(_), .. }) => Some(Action::Card(0)),
+            _ => None,
+        };
         self.play(Sound::Click);
         self.speak(game.intro(self.level));
         self.ask(false);
@@ -678,15 +876,27 @@ impl App {
                 };
                 self.say(&clips);
             }
+            Play::Typing(typing) if task.game == Game::Pictures => {
+                let Some(item) = typing.items.get(typing.at) else { return };
+                // Asked again, she gives the word away by saying it.
+                let clips = [if again { words::word_voice(item) } else { "spell".to_string() }];
+                self.bubble = words::shown("spell").to_string();
+                self.say(&clips);
+            }
             Play::Quiz(quiz) => {
                 let Some(question) = quiz.items.get(quiz.at) else { return };
                 let clips = if question.ask.is_empty() && again { vec!["fits".to_string()] } else { question.ask.clone() };
-                if task.level == Level::Easy {
-                    self.bubble = words::shown("starts").to_string();
-                } else if again || quiz.at > 0 {
-                    self.bubble = words::shown("fits").to_string();
+                // The first story's question is in what she opened with.
+                if task.game != Game::Story || task.level == Level::Easy || again || quiz.at > 0 {
+                    self.bubble = question.bubble.clone();
                 }
                 self.say(&clips);
+            }
+            Play::Bubbles(bubbles) => {
+                let (phrase, target) = (bubbles.phrase(task.level), bubbles.target.clone());
+                self.bubble = format!("{} {target}!", words::shown(phrase));
+                let clip = if task.level == Level::Easy { words::letter_voice(target.chars().next().unwrap_or('A')) } else { words::word_voice(&target) };
+                self.say(&[phrase.to_string(), clip]);
             }
             _ => {}
         }
@@ -694,8 +904,11 @@ impl App {
 
     /// Whether the word to type is being kept out of sight: only while she can be
     /// heard saying it, and until two wrong keys show that it is too hard.
+    /// A picture to spell is kept out of sight the same way, sound or no sound: the
+    /// picture is what says what it is.
     pub fn concealed(&self) -> bool {
-        matches!(&self.task, Some(Task { play: Play::Typing(typing), .. }) if typing.hidden && typing.misses < 2) && self.voiced()
+        let Some(Task { play: Play::Typing(typing), game, .. }) = &self.task else { return false };
+        typing.hidden && typing.misses < 2 && (self.voiced() || *game == Game::Pictures)
     }
 
     /// The key that would be right now, for the keyboard on the screen to light up.
@@ -772,7 +985,23 @@ impl App {
                     self.roll(0.0);
                 }
             }
-            Play::Quiz(_) => {}
+            Play::Bubbles(bubbles) => {
+                // On Easy the bubbles are letters, and a letter's key pops one: the
+                // highest of them, which has been waiting longest.
+                if !c.is_ascii_alphabetic() || bubbles.done.is_some() {
+                    return;
+                }
+                let found = bubbles
+                    .bubbles
+                    .iter()
+                    .filter(|b| b.popped.is_none() && b.label == c.to_string() && (0.0..=1.0).contains(&b.y))
+                    .min_by(|a, b| a.y.total_cmp(&b.y));
+                match found.map(|bubble| bubble.id) {
+                    Some(id) => self.pop(id),
+                    None => self.play(Sound::Oops),
+                }
+            }
+            Play::Quiz(_) | Play::Pairs(_) => {}
         }
     }
 
@@ -780,6 +1009,13 @@ impl App {
     fn finished_one(&mut self, game: Game) {
         let praise = self.one_of(if game == Game::Snack { "yum" } else { "praise" });
         self.speak(praise);
+        // The word of a picture is said once it is spelled, now that it can be heard.
+        if let Some(Task { play: Play::Typing(typing), game: Game::Pictures, .. }) = &self.task
+            && let Some(item) = typing.items.get(typing.at)
+        {
+            let word = words::word_voice(item);
+            self.say(&[word]);
+        }
         if game == Game::Snack {
             self.play(Sound::Tick);
         } else {
@@ -853,6 +1089,196 @@ impl App {
         } else {
             self.marker = Some(Action::Pick(0));
             self.ask(false);
+        }
+    }
+
+    /// Bubbles at the start: one in each lane, spread up the screen, so that there is
+    /// something to pop at once.
+    fn bubbles(&mut self) -> Bubbles {
+        let lanes = [4, 5, 5][self.level as usize];
+        let mut bubbles = Bubbles { lanes, goal: 6, ..Bubbles::default() };
+        let mut order: Vec<usize> = (0..lanes).collect();
+        self.rng.shuffle(&mut order);
+        for (i, lane) in order.into_iter().enumerate() {
+            self.add_bubble(&mut bubbles, lane, 0.15 + 0.75 * i as f32 / lanes as f32);
+        }
+        self.aim(&mut bubbles);
+        bubbles
+    }
+
+    /// A new bubble in a lane, with something on it that no other bubble has: on Hard,
+    /// a word that rhymes with none of the others.
+    fn add_bubble(&mut self, bubbles: &mut Bubbles, lane: usize, y: f32) {
+        let taken = |label: &str| bubbles.rising().any(|b| b.label == label || (self.level == Level::Hard && words::family(&b.label) == words::family(label)));
+        let label = loop {
+            let label = match self.level {
+                Level::Easy => ((b'A' + self.rng.below(26) as u8) as char).to_string(),
+                Level::Medium => self.rng.pick(words::short_words()).to_string(),
+                Level::Hard => {
+                    let family = self.rng.below(words::rhymes().len());
+                    self.rng.pick(&words::rhymes()[family]).to_string()
+                }
+            };
+            if !taken(&label) && label != bubbles.target {
+                break label;
+            }
+        };
+        let rise = [16.0, 14.0, 13.0][self.level as usize] * self.rng.between(0.9, 1.1);
+        bubbles.bubbles.push(Bubble { id: bubbles.next_id, label, lane, y, rise, color: self.rng.below(6), popped: None, wobble: 0.0 });
+        bubbles.next_id += 1;
+    }
+
+    /// Chooses what to ask for next, from what is there: on Hard, a word that rhymes
+    /// with one of the bubbles and is not on any.
+    fn aim(&mut self, bubbles: &mut Bubbles) {
+        let mut choices: Vec<String> = bubbles.rising().map(|b| b.label.clone()).filter(|label| *label != bubbles.target).collect();
+        if choices.is_empty() {
+            choices = bubbles.rising().map(|b| b.label.clone()).collect();
+        }
+        let Some(chosen) = choices.get(self.rng.below(choices.len())).cloned() else { return };
+        bubbles.target = match words::family(&chosen) {
+            Some(family) if self.level == Level::Hard => {
+                let others: Vec<&str> = words::rhymes()[family].iter().copied().filter(|w| *w != chosen).collect();
+                self.rng.pick(&others).to_string()
+            }
+            _ => chosen,
+        };
+    }
+
+    /// Lends the bubbles out of the task, so that what is done to them can also make
+    /// her speak.
+    fn with_bubbles<R>(&mut self, f: impl FnOnce(&mut App, &mut Bubbles, Level) -> R) -> Option<R> {
+        let Some(Task { play: Play::Bubbles(lent), level, .. }) = &mut self.task else { return None };
+        let level = *level;
+        let mut bubbles = std::mem::take(lent);
+        let result = f(self, &mut bubbles, level);
+        if let Some(Task { play: Play::Bubbles(lent), .. }) = &mut self.task {
+            *lent = bubbles;
+        }
+        Some(result)
+    }
+
+    /// A bubble clicked: popped, if it is the one she asked for. Another rises in its
+    /// place. A wrong one only wobbles.
+    fn pop(&mut self, id: usize) {
+        let finished = self.with_bubbles(|app, bubbles, level| {
+            let i = bubbles.bubbles.iter().position(|b| b.id == id && b.popped.is_none())?;
+            if bubbles.done.is_some() {
+                return None;
+            }
+            if !bubbles.fits(&bubbles.bubbles[i].label, level) {
+                bubbles.bubbles[i].wobble = 0.5;
+                bubbles.misses += 1;
+                app.play(Sound::Oops);
+                app.feel(Mood::Oops, 0.5);
+                if bubbles.misses % 4 == 0 {
+                    let comfort = app.one_of("comfort");
+                    app.speak(comfort);
+                }
+                return None;
+            }
+            let bubble = &mut bubbles.bubbles[i];
+            bubble.popped = Some(0.0);
+            let (lane, y, label) = (bubble.lane, bubble.y, bubble.label.clone());
+            bubbles.popped += 1;
+            app.play(Sound::Pop);
+            app.feel(Mood::Cheer, 0.8);
+            if let Some(&(at, _)) = app.buttons.iter().rev().find(|(_, action)| *action == Action::Pop(id)) {
+                app.burst(at.x as f32 + at.width as f32 / 2.0, at.y as f32 + at.height as f32 / 2.0, 16, &["○", "°", "✦"], 12.0, 6.0);
+            }
+            if bubbles.popped == bubbles.goal {
+                bubbles.done = Some(0.0);
+                let praise = app.one_of("praise");
+                app.speak(praise);
+                return Some(true);
+            }
+            app.add_bubble(bubbles, lane, if app.animations { 1.1 } else { y });
+            app.aim(bubbles);
+            app.marker = bubbles.bubbles.last().map(|b| Action::Pop(b.id));
+            // What was popped, said; and now and then a word of praise.
+            let said = if level == Level::Easy { words::letter_voice(label.chars().next().unwrap_or('A')) } else { words::word_voice(&label) };
+            app.say(&[said]);
+            if bubbles.popped % 3 == 0 {
+                let praise = app.one_of("praise");
+                app.say(&[praise.to_string()]);
+            }
+            Some(false)
+        });
+        match finished.flatten() {
+            Some(true) if !self.animations => self.celebrate(),
+            Some(false) => self.ask(false),
+            _ => {}
+        }
+    }
+
+    /// Bubbles, `dt` seconds on: they rise, and one that is out of sight at the top
+    /// comes up again from the bottom. Nothing is lost.
+    fn float(&mut self, dt: f32) {
+        let Some(Task { play: Play::Bubbles(bubbles), .. }) = &mut self.task else { return };
+        for bubble in &mut bubbles.bubbles {
+            match &mut bubble.popped {
+                Some(age) => *age += dt,
+                None => {
+                    bubble.y -= dt / bubble.rise;
+                    if bubble.y < -0.1 {
+                        bubble.y = 1.1;
+                    }
+                    bubble.wobble = (bubble.wobble - dt).max(0.0);
+                }
+            }
+        }
+        bubbles.bubbles.retain(|bubble| bubble.popped.is_none_or(|age| age < BURST));
+        if let Some(age) = &mut bubbles.done {
+            *age += dt;
+            if *age >= 0.9 {
+                self.celebrate();
+            }
+        }
+    }
+
+    /// A card of pairs turned over. When it is the second, the two stay over if they
+    /// go together, and are turned back a moment later if not.
+    fn turn(&mut self, card: usize) {
+        let Some(Task { play: Play::Pairs(pairs), .. }) = &mut self.task else { return };
+        if pairs.done.is_some() || pairs.cards.get(card).is_none_or(|c| c.open) {
+            return;
+        }
+        // Two that did not go together are turned back first.
+        if pairs.showing.take().is_some() {
+            pairs.cards.iter_mut().filter(|c| !c.matched).for_each(|c| c.open = false);
+        }
+        pairs.cards[card].open = true;
+        let said = pairs.cards[card].voice();
+        let open: Vec<usize> = (0..pairs.cards.len()).filter(|&i| pairs.cards[i].open && !pairs.cards[i].matched).collect();
+        let (found, finished) = match open[..] {
+            [a, b] if pairs.cards[a].pair == pairs.cards[b].pair => {
+                pairs.cards[a].matched = true;
+                pairs.cards[b].matched = true;
+                pairs.matched += 1;
+                let finished = pairs.matched * 2 == pairs.cards.len();
+                if finished {
+                    pairs.done = Some(0.0);
+                }
+                (true, finished)
+            }
+            [_, _] => {
+                pairs.showing = Some(0.0);
+                (false, false)
+            }
+            _ => (false, false),
+        };
+        self.say(&[said]);
+        if found {
+            let praise = self.one_of("praise");
+            self.speak(praise);
+            self.play(Sound::Chime);
+            self.feel(Mood::Cheer, CHEER);
+            self.cheer();
+        } else {
+            self.play(Sound::Tick);
+        }
+        if finished && !self.animations {
+            self.celebrate();
         }
     }
 
@@ -1023,6 +1449,8 @@ impl App {
             Action::Next => self.next_question(),
             Action::Repeat => self.ask(true),
             Action::Wear(gift) => self.wear(gift),
+            Action::Pop(id) => self.pop(id),
+            Action::Card(card) => self.turn(card),
             Action::Skip => match self.screen {
                 Screen::Intro => {
                     self.home();
@@ -1075,6 +1503,14 @@ impl App {
         }
     }
 
+    /// Enter: presses the button the marker is on. Only a button that is on the
+    /// screen: the marker may be from before.
+    fn press_marker(&mut self) {
+        if let Some(action) = self.marker.filter(|marker| self.buttons.iter().any(|(_, action)| action == marker)) {
+            self.act(action);
+        }
+    }
+
     pub fn on_key(&mut self, key: KeyEvent) {
         if key.modifiers.contains(KeyModifiers::CONTROL) {
             if matches!(key.code, KeyCode::Char('c' | 'C')) {
@@ -1092,25 +1528,34 @@ impl App {
         if self.screen == Screen::Party && self.phase_time < GRACE {
             return;
         }
-        // In the games that are typed, a letter is a letter and nothing else.
-        if matches!(&self.task, Some(Task { play: Play::Typing(_) | Play::Yarn(_), .. }) if self.screen == Screen::Play) {
+        // In the games that are typed, a letter is a letter and nothing else. Easy's
+        // bubbles are letters too, and there the arrows still move the marker.
+        let bubbles = matches!(&self.task, Some(Task { play: Play::Bubbles(_), level: Level::Easy, .. }));
+        if self.screen == Screen::Play && (bubbles || matches!(&self.task, Some(Task { play: Play::Typing(_) | Play::Yarn(_), .. }))) {
             match key.code {
                 KeyCode::Esc => self.act(Action::Back),
                 KeyCode::Tab => self.act(Action::Repeat),
+                KeyCode::Char(' ') if bubbles => self.press_marker(),
                 KeyCode::Char(c) if !key.modifiers.contains(KeyModifiers::ALT) => self.on_char(c),
+                KeyCode::Left if bubbles => self.step(-1, 0),
+                KeyCode::Right if bubbles => self.step(1, 0),
+                KeyCode::Up if bubbles => self.step(0, -1),
+                KeyCode::Down if bubbles => self.step(0, 1),
+                KeyCode::Enter if bubbles => self.press_marker(),
                 _ => {}
             }
             return;
         }
-        // Easy story time asks for a letter, and the letter's own key answers. So
-        // there too a letter is only a letter: not an arrow, not the theme.
+        // Where each answer has a key of its own (the letter that a word starts with,
+        // the number of things), that key answers, and so a letter or a digit is only
+        // an answer there: not an arrow, not the theme.
         if self.screen == Screen::Play
-            && let Some(Task { play: Play::Quiz(quiz), level: Level::Easy, .. }) = &self.task
+            && let Some(Task { play: Play::Quiz(quiz), .. }) = &self.task
+            && let Some(keys) = quiz.items.get(quiz.at).and_then(|question| question.keys)
             && let KeyCode::Char(c) = key.code
-            && c.is_ascii_alphabetic()
+            && c.is_ascii_alphanumeric()
         {
-            let option = quiz.items.get(quiz.at).and_then(|question| question.options.iter().position(|o| o.eq_ignore_ascii_case(&c.to_string())));
-            if let Some(option) = option {
+            if let Some(option) = keys.iter().position(|k| k.eq_ignore_ascii_case(&c)) {
                 self.act(Action::Pick(option));
             }
             return;
@@ -1131,13 +1576,7 @@ impl App {
             KeyCode::Right => return self.step(1, 0),
             KeyCode::Up => return self.step(0, -1),
             KeyCode::Down => return self.step(0, 1),
-            KeyCode::Enter | KeyCode::Char(' ') => {
-                // Only a button that is on the screen: the marker may be from before.
-                if let Some(action) = self.marker.filter(|marker| self.buttons.iter().any(|(_, action)| action == marker)) {
-                    self.act(action);
-                }
-                return;
-            }
+            KeyCode::Enter | KeyCode::Char(' ') => return self.press_marker(),
             KeyCode::Char('t') => return self.act(Action::Theme),
             KeyCode::Char('s') => return self.act(Action::Sound),
             KeyCode::Char('m') => return self.act(Action::Motion),
@@ -1145,9 +1584,13 @@ impl App {
             _ => {}
         }
         match (self.screen, code) {
-            (Screen::Home, KeyCode::Char(c @ '1'..='4')) => self.act(Action::Play(Game::ALL[c as usize - '1' as usize])),
-            (Screen::Home, KeyCode::Char('5' | 'd')) => self.act(Action::Dress),
-            (Screen::Home, KeyCode::Char('6')) => self.act(Action::Surprise),
+            (Screen::Home, KeyCode::Char(c @ '0'..='9')) => {
+                if let Some(&game) = Game::ALL.iter().find(|game| game.key() == c) {
+                    self.act(Action::Play(game));
+                }
+            }
+            (Screen::Home, KeyCode::Char('d')) => self.act(Action::Dress),
+            (Screen::Home, KeyCode::Char('r')) => self.act(Action::Surprise),
             (Screen::Home, KeyCode::Char('e')) => {
                 let next = Level::ALL[(self.level as usize + 1) % Level::ALL.len()];
                 self.act(Action::Level(next));
@@ -1200,7 +1643,8 @@ impl App {
                 || self.mood != Mood::Calm
                 || matches!(self.screen, Screen::Intro | Screen::Bye)
                 || self.party.as_ref().is_some_and(|party| party.age < PARTY)
-                || matches!(&self.task, Some(Task { play: Play::Yarn(_), .. }) if self.screen == Screen::Play)
+                || matches!(&self.task, Some(Task { play: Play::Yarn(_) | Play::Bubbles(_), .. }) if self.screen == Screen::Play)
+                || matches!(&self.task, Some(Task { play: Play::Pairs(Pairs { showing: Some(_), .. } | Pairs { done: Some(_), .. }), .. }))
                 || matches!(&self.task, Some(Task { play: Play::Typing(Typing { cheer: Some(_), .. }), .. })))
     }
 
@@ -1277,6 +1721,22 @@ impl App {
                 }
             }
             Play::Yarn(_) => self.roll(dt),
+            Play::Bubbles(_) => self.float(dt),
+            Play::Pairs(pairs) => {
+                if let Some(age) = &mut pairs.showing {
+                    *age += dt;
+                    if *age >= 1.6 {
+                        pairs.showing = None;
+                        pairs.cards.iter_mut().filter(|c| !c.matched).for_each(|c| c.open = false);
+                    }
+                }
+                if let Some(age) = &mut pairs.done {
+                    *age += dt;
+                    if *age >= 1.2 {
+                        self.celebrate();
+                    }
+                }
+            }
             Play::Quiz(quiz) => {
                 if let Some(age) = &mut quiz.solved {
                     *age += dt;
@@ -1886,6 +2346,193 @@ mod tests {
         assert_eq!(app.screen, Screen::Party);
     }
 
+    fn bubbles(app: &App) -> &Bubbles {
+        let Some(Task { play: Play::Bubbles(bubbles), .. }) = &app.task else { panic!("not bubbles") };
+        bubbles
+    }
+
+    fn pairs(app: &App) -> &Pairs {
+        let Some(Task { play: Play::Pairs(pairs), .. }) = &app.task else { panic!("not pairs") };
+        pairs
+    }
+
+    /// Plays any game to its end by doing only what is right, as the scripted player
+    /// of `tests/e2e.sh` cannot.
+    fn win(app: &mut App) {
+        for _ in 0..200 {
+            if app.screen != Screen::Play {
+                return;
+            }
+            let level = app.task.as_ref().unwrap().level;
+            match &app.task.as_ref().unwrap().play {
+                Play::Typing(typing) if typing.cheer.is_none() => {
+                    let item = typing.items[typing.at].clone();
+                    type_text(app, &item[typing.typed..]);
+                }
+                Play::Quiz(quiz) if quiz.solved.is_none() => app.act(Action::Pick(quiz.items[quiz.at].right)),
+                Play::Quiz(_) => app.act(Action::Next),
+                Play::Bubbles(state) if state.done.is_none() => {
+                    let id = state.bubbles.iter().find(|b| b.popped.is_none() && state.fits(&b.label, level)).expect("one that fits").id;
+                    app.act(Action::Pop(id));
+                }
+                Play::Pairs(state) if state.done.is_none() => {
+                    let first = state.cards.iter().position(|c| !c.matched).unwrap();
+                    let second = (0..state.cards.len()).find(|&i| i != first && state.cards[i].pair == state.cards[first].pair).unwrap();
+                    app.act(Action::Card(first));
+                    app.act(Action::Card(second));
+                }
+                _ => {}
+            }
+            app.advance(0.5);
+        }
+        panic!("never finished");
+    }
+
+    #[test]
+    fn every_game_at_every_level_can_be_won_and_ends_in_a_party() {
+        for animations in [true, false] {
+            for level in Level::ALL {
+                for game in Game::ALL {
+                    if game == Game::Yarn {
+                        continue;
+                    }
+                    let mut app = app();
+                    (app.level, app.animations) = (level, animations);
+                    app.start(game);
+                    assert_eq!(app.task.as_ref().unwrap().progress().0, 0);
+                    win(&mut app);
+                    assert_eq!(app.screen, Screen::Party, "{game:?} at {level:?}");
+                    assert_eq!(app.task.as_ref().unwrap().progress().0, app.task.as_ref().unwrap().progress().1, "{game:?} at {level:?}");
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn counting_is_answered_by_the_number_and_letters_do_nothing() {
+        let mut app = app();
+        app.level = Level::Medium;
+        press(&mut app, KeyCode::Char('5'));
+        assert_eq!(app.task.as_ref().unwrap().game, Game::Count);
+        let question = &quiz(&app).items[0];
+        let Show::Things(things) = &question.show else { panic!() };
+        let right = question.options[question.right].clone();
+        assert_eq!(things.len().to_string(), right);
+        let (right_at, keys) = (question.right, question.keys.unwrap());
+        assert!(app.bubble.starts_with("How many") && app.speaker.said.last().unwrap().starts_with("count-"));
+        let (theme, marker) = (app.theme, app.marker);
+        type_text(&mut app, "tlhq");
+        assert_eq!((app.theme, app.marker, quiz(&app).tried), (theme, marker, [false; 3]));
+        let wrong = (right_at + 1) % 3;
+        let wrong_key = keys[wrong];
+        type_text(&mut app, &wrong_key.to_string());
+        assert!(quiz(&app).tried[wrong] && quiz(&app).solved.is_none() && app.mood == Mood::Oops);
+        let key = if right == "10" { '0' } else { right.chars().next().unwrap() };
+        type_text(&mut app, &key.to_string());
+        assert!(quiz(&app).solved.is_some());
+        assert_eq!(app.speaker.said.last(), Some(&words::number_voice(right.parse().unwrap())));
+    }
+
+    #[test]
+    fn bubbles_pop_when_they_are_the_one_asked_for_and_only_wobble_when_not() {
+        let mut app = app();
+        press(&mut app, KeyCode::Char('6'));
+        assert_eq!(bubbles(&app).bubbles.len(), 4);
+        let target = bubbles(&app).target.clone();
+        assert_eq!(app.bubble, format!("Pop the letter {target}!"));
+        assert_eq!(app.speaker.said[app.speaker.said.len() - 2..], ["pop-letter".to_string(), words::letter_voice(target.chars().next().unwrap())]);
+        // A letter on another bubble: it wobbles, and nothing is lost.
+        let other = bubbles(&app).bubbles.iter().find(|b| b.label != target).unwrap().label.clone();
+        type_text(&mut app, &other.to_lowercase());
+        assert_eq!((bubbles(&app).popped, app.mood), (0, Mood::Oops));
+        assert!(bubbles(&app).bubbles.iter().any(|b| b.wobble > 0.0));
+        // A letter on no bubble at all.
+        let none = ('A'..='Z').find(|c| bubbles(&app).bubbles.iter().all(|b| b.label != c.to_string())).unwrap();
+        type_text(&mut app, &none.to_string());
+        assert_eq!(app.speaker.heard.last(), Some(&Sound::Oops));
+        type_text(&mut app, &target.to_lowercase());
+        assert_eq!((bubbles(&app).popped, app.speaker.heard.last()), (1, Some(&Sound::Pop)));
+        // Another rises in its place, and she asks for one that is there.
+        let state = bubbles(&app);
+        assert_eq!(state.rising().count(), 4);
+        assert!(state.rising().any(|b| b.label == state.target));
+        // Those that float out of sight at the top come up again at the bottom.
+        app.advance(20.0);
+        assert!(bubbles(&app).rising().all(|b| (-0.1..=1.1).contains(&b.y)));
+
+        // Hard: a word that rhymes, and the word itself is not on any bubble.
+        app.level = Level::Hard;
+        app.start(Game::Bubbles);
+        for _ in 0..20 {
+            let state = bubbles(&app);
+            if state.done.is_some() {
+                break;
+            }
+            let fitting: Vec<&Bubble> = state.rising().filter(|b| state.fits(&b.label, Level::Hard)).collect();
+            assert_eq!(fitting.len(), 1, "{state:?}");
+            assert!(state.rising().all(|b| b.label != state.target));
+            let families: std::collections::HashSet<_> = state.rising().map(|b| words::family(&b.label)).collect();
+            assert_eq!(families.len(), state.rising().count());
+            let id = fitting[0].id;
+            app.act(Action::Pop(id));
+            if app.screen != Screen::Play {
+                break;
+            }
+            app.advance(0.2);
+        }
+        assert!(bubbles(&app).done.is_some());
+        app.advance(1.0);
+        assert_eq!(app.screen, Screen::Party);
+    }
+
+    #[test]
+    fn pairs_that_do_not_match_turn_back_and_those_that_do_stay() {
+        let mut app = app();
+        press(&mut app, KeyCode::Char('9'));
+        assert_eq!((pairs(&app).cards.len(), app.marker), (6, Some(Action::Card(0))));
+        let cards = &pairs(&app).cards;
+        let other = (1..cards.len()).find(|&i| cards[i].pair != cards[0].pair).unwrap();
+        let same = (1..cards.len()).find(|&i| cards[i].pair == cards[0].pair).unwrap();
+        app.act(Action::Card(0));
+        app.act(Action::Card(0));
+        assert_eq!(pairs(&app).cards.iter().filter(|c| c.open).count(), 1);
+        app.act(Action::Card(other));
+        assert!(pairs(&app).showing.is_some() && app.animating());
+        app.advance(1.7);
+        assert!(pairs(&app).cards.iter().all(|c| !c.open) && pairs(&app).showing.is_none());
+        app.act(Action::Card(0));
+        app.act(Action::Card(same));
+        assert!(pairs(&app).cards[0].matched && pairs(&app).cards[same].matched);
+        assert_eq!((pairs(&app).matched, app.speaker.heard.last()), (1, Some(&Sound::Chime)));
+        // Without animations, two that do not match stay until the next card.
+        app.animations = false;
+        let rest: Vec<usize> = (0..6).filter(|&i| !pairs(&app).cards[i].matched).collect();
+        let (a, b) = (rest[0], rest.iter().copied().find(|&i| pairs(&app).cards[i].pair != pairs(&app).cards[rest[0]].pair).unwrap());
+        app.act(Action::Card(a));
+        app.act(Action::Card(b));
+        app.advance(5.0);
+        assert_eq!(pairs(&app).cards.iter().filter(|c| c.open && !c.matched).count(), 2);
+        let c = rest.iter().copied().find(|&i| i != a && i != b).unwrap();
+        app.act(Action::Card(c));
+        assert_eq!(pairs(&app).cards.iter().filter(|c| c.open && !c.matched).count(), 1);
+    }
+
+    #[test]
+    fn a_picture_to_spell_is_kept_hidden_even_without_sound() {
+        let mut app = app();
+        app.level = Level::Hard;
+        app.start(Game::Pictures);
+        let word = typing(&app).items[0].clone();
+        assert!(crate::art::find(&word.to_lowercase()).is_some());
+        assert!(!app.voiced() && app.concealed() && app.wanted().is_none());
+        assert_eq!(app.bubble, "What is it? Type its name.");
+        // Asked again, she says the word.
+        press(&mut app, KeyCode::Tab);
+        assert_eq!(app.speaker.said.last(), Some(&words::word_voice(&word)));
+        type_text(&mut app, &word);
+        assert_eq!(app.speaker.said.last(), Some(&words::word_voice(&word)));
+    }
+
     #[test]
     fn no_two_parties_running_are_the_same_and_every_game_wins_a_gift() {
         let mut app = app();
@@ -1964,7 +2611,7 @@ mod tests {
     #[test]
     fn the_dressing_room_puts_gifts_on_and_off() {
         let mut app = app();
-        press(&mut app, KeyCode::Char('5'));
+        press(&mut app, KeyCode::Char('d'));
         assert_eq!((app.screen, app.marker, app.bubble.as_str()), (Screen::Dress, Some(Action::Back), "Play a game to win a gift!"));
         app.act(Action::Wear(2));
         assert_eq!(app.gifts, Gifts::default());
@@ -1993,13 +2640,14 @@ mod tests {
         // Esc does not leave the game.
         press(&mut app, KeyCode::Esc);
         assert!(!app.quit && app.screen == Screen::Home);
-        for (key, game) in [('1', Game::Snack), ('2', Game::Says), ('3', Game::Yarn), ('4', Game::Story)] {
+        for (key, game) in Game::ALL.iter().map(|&game| (game.key(), game)) {
             press(&mut app, KeyCode::Char(key));
             assert_eq!(app.task.as_ref().map(|task| task.game), Some(game));
             press(&mut app, KeyCode::Esc);
             assert_eq!((app.screen, app.marker), (Screen::Home, Some(Action::Play(game))));
         }
-        press(&mut app, KeyCode::Char('6'));
+        assert_eq!((Game::Snack.key(), Game::Next.key()), ('1', '0'));
+        press(&mut app, KeyCode::Char('r'));
         assert_eq!(app.screen, Screen::Play);
         press(&mut app, KeyCode::Esc);
 
