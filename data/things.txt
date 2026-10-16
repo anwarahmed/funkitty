@@ -1,0 +1,72 @@
+# Little pictures, for counting: up to ten of them have to fit beside Pink Kitty in
+# the smallest window. The same form as pictures.txt. A thing's name is what she
+# asks for ("How many fish?", the phrase count-fish in phrases.txt).
+
+: K 50 40 60
+: W 255 255 255
+: R 235 65 75
+: P 255 150 195
+: O 250 150 50
+: Y 255 210 70
+: G 95 190 95
+: D 45 130 65
+: B 70 140 230
+: N 145 95 55
+
+= fish
+..BBB..B
+.BBBBBBB
+BKBBBBB.
+.BBBBBBB
+..BBB..B
+
+= star
+...Y...
+..YYY..
+YYYYYYY
+.YYYYY.
+.YY.YY.
+.Y...Y.
+
+= heart
+.RR.RR.
+RRRRRRR
+RRRRRRR
+.RRRRR.
+..RRR..
+...R...
+
+= apple
+...N.G.
+..RNRR.
+.RRRRRR
+RWRRRRR
+RRRRRRR
+.RRRRR.
+..R.R..
+
+= flower
+.PPP.
+PPYPP
+.PPP.
+..D..
+.GD..
+..D..
+
+= duck
+.YY.....
+YKYY....
+OYYY..Y.
+..YYYYY.
+..YYYYY.
+...YYY..
+
+= balloon
+.BBB.
+BBBBB
+BWBBB
+BBBBB
+.BBB.
+..B..
+..N..
+..N..

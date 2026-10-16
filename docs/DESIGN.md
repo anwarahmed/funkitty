@@ -219,12 +219,65 @@ What no recognizer can say is whether she sounds *nice*. That needs a person.
   twice as tall as it is wide, but they read well. Whether every terminal font has
   those characters was not tried beyond the one the pictures were drawn with.
 
+- **Six more games** (0.2.0). Asked to make it "more fun and educational", I offered
+  the ideas left from before. The owner chose all four (counting, a bubble game for
+  the mouse, picture words, capital and small letters) "and a few more"; the more
+  were pairs, a memory game, and "What's next?", patterns. Rhymes and sums, two more
+  of the old ideas, went into Hard bubbles and pairs, and Hard counting. What each
+  asks at each level:
+
+  | Game | Easy (4-5) | Medium (6-7) | Hard (8-10) |
+  |---|---|---|---|
+  | Counting | 1 to 5 things | 3 to 10 | adding, and taking away, to 10 |
+  | Bubbles | pop the letter | pop the word | pop a word that rhymes |
+  | Picture words | which picture is the word | which word is the picture | spell the picture |
+  | Big and little | the little letter for a big one | the big for a little | the same word in little letters |
+  | Pairs | 3 pairs of pictures | 4 of a big and a little letter | 5 of rhyming words |
+  | What's next? | a pattern of pictures | counting up and down, the alphabet, patterns of three | twos, fives, tens, every other letter |
+
+  Four of them are story time's engine (three answers, one right, a wrong one
+  costing nothing), which kept the rules for keys and for drawing answers in one
+  place. The wrong answers are chosen to teach: the nearest numbers, the letter
+  turned over (b for d, p for q), the same word with a letter turned over.
+- **Small letters in the big font** (0.2.0), which big and little needed. They are
+  used wherever text is written in mixed case, so the title, a story's sentence and
+  her bigger speech bubbles changed from all capitals.
+- **A new voice** (0.2.0). The owner found Piper's "robotic/androidish" and asked for
+  something more like a cute kitty, with tone and feeling. Kokoro-82M (Apache 2.0,
+  so its clips can be given away) was tried in six voices at three pitches each, on
+  five lines that each have a mood ("Hi! I'm Pink Kitty! Let's have fun!", a
+  question, "Yummy! Perfect!", "Oh, almost! You can do it!", "Hooray! You are a
+  star!"), beside Piper as it was. The recognizer heard all nineteen samples whole.
+  The owner chose `bf_lily`, a British voice, at 1.3. Kokoro has no control for
+  feeling, so each kind of line has its own speed and pitch (`MOODS` in
+  `tools/voice.py`): pleased is quicker and higher, comforting slower and lower,
+  single letters and words slow and clear. Kokoro also says a thing the same way
+  every time, so a retake is said a shade faster or slower instead.
+
+  Made in Lily, the whole set was heard as written 304 times of 468, against Piper's
+  338 of 372, and nearly all the misses were single words. Said alone, a short word
+  often came out with a sound after it ("sheep" as "Sheeba", "wall" as "wallet");
+  in a sentence it was whole. On the 44 words missed most, nothing about how they
+  were said helped Lily much (speed 1.0, no pitch, American sounds, "!", "...": 0 to
+  3 right), quotation marks did a little (12), and the other voices did better in
+  quotation marks: Bella 32, Heart 29, Nicole 28, Sky 18. Joined after "Can you
+  type", Lily's clips of those words were heard 14 times of 42 and Piper's 30. Offered
+  Bella for everything, Lily for everything as she was, Lily with her words fixed
+  up, or Lily with Bella saying the words, the owner chose Lily with her words fixed
+  up: in quotation marks, and a word still misheard cut out of a sentence ("Can you
+  type sheep?") from where the recognizer hears it begin. That made 375 of 468.
+
 ## Decisions that were mine, not the owner's
 
 These were not asked for or answered. They are easy to change, and each is where a
 second opinion is most likely.
 
-- **One level for all four games**, chosen on the home screen and remembered.
+- **One level for all the games**, chosen on the home screen and remembered.
+- **The keys of the home screen** since there are ten games: 1 to 9 and 0, D for
+  dress up and R for surprise (they were 5 and 6). Three games to a row.
+- **What the six new games ask** at each level, the pictures (drawn by me, 22 of them
+  and 7 little ones), the rhymes, and that bubbles and pairs end after six pops and
+  when every pair is found.
 - **Twelve gifts**, and a heart for each game after that.
 - **Esc does not leave the game from the home screen**, as in fungeo; Q does, after
   a wave.

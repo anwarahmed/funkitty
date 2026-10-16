@@ -6,7 +6,7 @@
 pkgname=funkitty-bin
 pkgver=@VERSION@
 pkgrel=1
-pkgdesc="Fun time with Pink Kitty: little reading and typing games for young children, in the terminal"
+pkgdesc="Fun time with Pink Kitty: little games of reading, typing, counting and patterns for young children, in the terminal"
 arch=('x86_64' 'aarch64')
 url="https://github.com/anwarahmed/funkitty"
 license=('MIT')

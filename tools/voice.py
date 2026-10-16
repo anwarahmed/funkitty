@@ -8,52 +8,104 @@ The lines come from the game itself (`funkitty voice-lines`: a name, a tab, the 
 so the game and its clips cannot disagree; `cargo test` fails until they match.
 voice/lines.tsv records the text each clip was made from.
 
-Needs ffmpeg, and Piper (https://github.com/rhasspy/piper) with a voice:
+Needs ffmpeg, and Kokoro (https://huggingface.co/hexgrad/Kokoro-82M, Apache 2.0) run
+through kokoro-onnx, in a Python that has it (the one tools/voice-check.py uses too):
 
-    FUNKITTY_PIPER   the piper program    (default ~/.cache/funkitty-voice/piper/piper)
-    FUNKITTY_VOICE   the voice's .onnx    (default ~/.cache/funkitty-voice/en_US-libritts_r-medium.onnx)
+    FUNKITTY_KOKORO   the folder of kokoro-v1.0.onnx and voices-v1.0.bin
+                      (default ~/.cache/funkitty-voice/kokoro)
 
-    mkdir -p ~/.cache/funkitty-voice && cd ~/.cache/funkitty-voice
-    curl -L https://github.com/rhasspy/piper/releases/download/2023.11.14-2/piper_linux_x86_64.tar.gz | tar xz
-    v=https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/libritts_r/medium/en_US-libritts_r-medium.onnx
-    curl -LO $v -LO $v.json
+    python3 -m venv ~/.cache/funkitty-voice/venv
+    ~/.cache/funkitty-voice/venv/bin/pip install kokoro-onnx soundfile faster-whisper
+    mkdir -p ~/.cache/funkitty-voice/kokoro && cd ~/.cache/funkitty-voice/kokoro
+    r=https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0
+    curl -LO $r/kokoro-v1.0.onnx -LO $r/voices-v1.0.bin
+    cargo run -q -- voice-lines | ~/.cache/funkitty-voice/venv/bin/python tools/voice.py
 
 The clips are given away with the game, so the voice must be one whose licence allows
-that. This one was trained on LibriTTS-R, which is CC BY 4.0: voice/README.md gives
-the credit that asks for. (en_US-hfc_female was a little clearer in tests, but its
-data is CC BY-NC-SA, which a game under the MIT licence cannot pass on.)
+that: Kokoro's model and voices are Apache 2.0 (voice/README.md gives the credit).
+Before 0.2.0 she was Piper's en_US-libritts_r-medium; docs/DESIGN.md says why that
+changed.
 
-How she sounds is the numbers below. Change them and run with --all, then listen, or
-at least run tools/voice-check.py.
+How she sounds is the numbers below: the user listened to six of Kokoro's voices at
+three pitches and chose bf_lily at 1.3. Each kind of line has a mood of its own (MOODS):
+a little quicker and brighter when she is pleased, slower and softer when she comforts,
+slow and clear for a single letter or word. Change them and run with --all, then
+listen, or at least run tools/voice-check.py.
 """
-import array, json, os, subprocess, sys, tempfile
+import array, os, re, subprocess, sys, tempfile
 
-SPEAKER = 20          # which of the voice's 904 readers she is
+VOICE = "bf_lily"     # which of Kokoro's voices she is
+LANG = "en-gb"        # how her words are sounded out: bf_ is a British voice
 RATE = 22050          # samples a second; src/voice.rs expects exactly this
-PITCH = 1.35          # how much higher than the voice she speaks
-SLOW = 1.12           # how much slower than the voice she speaks: she talks to small children
+KOKORO_RATE = 24000   # what Kokoro makes
+PITCH = 1.3           # how much higher than the voice she speaks, and how much smaller
 QUIET = 600           # below this (of 32767) is silence, to be cut from both ends
 PEAK = 27000          # every clip is made this loud at its loudest
 
+# (clip names, as a pattern) -> (speed, pitch on top of PITCH). The first that fits.
+MOODS = [
+    (r"(praise|party|yum|pounce|gift|dress)-\d+|heart|hello.*|.*-intro", (1.04, 1.05)),
+    (r"comfort-\d+", (0.88, 0.97)),
+    (r"bye", (0.95, 1.02)),
+    (r"(letter|word|number)-.*", (0.88, 1.0)),
+    (r"story-.*", (0.94, 1.0)),
+]
+ASKING = (0.94, 1.0)  # everything else: what she asks
+
+# Said alone, a short word often comes out with a sound after it ("sheep" as "Sheeba");
+# in quotation marks less often. tools/voice-check.py retakes one that is still
+# misheard by cutting it out of one of these sentences, where it is said whole.
+SINGLE = r"(letter|word|number)-.*"
+CARRIERS = ["Can you type {}?", "Where is the {}?", "Pop the word {}!", "I like the {}."]
+
 HOME = os.path.expanduser("~/.cache/funkitty-voice")
-PIPER = os.environ.get("FUNKITTY_PIPER", f"{HOME}/piper/piper")
-VOICE = os.environ.get("FUNKITTY_VOICE", f"{HOME}/en_US-libritts_r-medium.onnx")
+KOKORO = os.environ.get("FUNKITTY_KOKORO", f"{HOME}/kokoro")
+
+
+def mood(name):
+    return next((m for pattern, m in MOODS if re.fullmatch(pattern, name)), ASKING)
+
+
+_kokoro = None
+
+
+def single(name):
+    return re.fullmatch(SINGLE, name) is not None
+
+
+def carrier(name, text, take):
+    """The sentence a retake of a single word is said in, to be cut out of; None for a
+    take that is the word alone. Every other retake is one."""
+    if not single(name) or take % 2 == 0:
+        return None
+    return CARRIERS[(take // 2) % len(CARRIERS)].format(text.rstrip("."))
+
+
+def speak(lines, folder, take=0):
+    """Has Kokoro say every (name, text), each into folder/name.wav. Kokoro says a thing
+    the same way every time, so another `take` is said a shade faster or slower. A
+    single letter, word or number is said in quotation marks."""
+    global _kokoro
+    import numpy, soundfile
+    from kokoro_onnx import Kokoro
+    if _kokoro is None:
+        _kokoro = Kokoro(f"{KOKORO}/kokoro-v1.0.onnx", f"{KOKORO}/voices-v1.0.bin")
+    nudge = [1.0, 0.95, 1.05, 0.9, 1.1][take % 5] if take else 1.0
+    for name, text in lines:
+        if single(name) and not text.endswith(("?", "!")) and " " not in text.strip("."):
+            text = f"\u201c{text}\u201d"
+        samples, rate = _kokoro.create(text, voice=VOICE, speed=mood(name)[0] * nudge, lang=LANG)
+        soundfile.write(f"{folder}/{name}.wav", numpy.asarray(samples, numpy.float32), rate)
 
 
 def run(*command, **more):
     return subprocess.run(command, check=True, stderr=subprocess.DEVNULL, **more)
 
 
-def speak(lines, folder):
-    """Has Piper say every (name, text), each into folder/name.wav."""
-    asked = "".join(json.dumps({"text": text, "output_file": f"{folder}/{name}.wav"}) + "\n" for name, text in lines)
-    run(PIPER, "--model", VOICE, "--speaker", str(SPEAKER), "--json-input", "--length_scale", str(SLOW), "--sentence_silence", "0.12",
-        input=asked.encode(), stdout=subprocess.DEVNULL)
-
-
 def finish(spoken, clip):
     """Raises the pitch, cuts the silence from the ends, evens the loudness and packs the clip."""
-    higher = f"asetrate={RATE * PITCH},aresample={RATE},atempo={1 / PITCH}"
+    pitch = PITCH * mood(os.path.basename(clip)[:-4])[1]
+    higher = f"asetrate={KOKORO_RATE * pitch},aresample={RATE},atempo={1 / pitch}"
     raw = run("ffmpeg", "-v", "error", "-i", spoken, "-af", higher, "-ac", "1", "-ar", str(RATE), "-f", "s16le", "-",
               stdout=subprocess.PIPE).stdout
     samples = array.array("h", raw[:len(raw) // 2 * 2])

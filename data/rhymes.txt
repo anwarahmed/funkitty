@@ -1,0 +1,23 @@
+# Words that rhyme, a family to a line: for Hard's bubbles ("Pop a word that rhymes
+# with cat") and Hard's pairs. Words of a family must all rhyme with each other and
+# with nothing in another family. Each word needs a voice clip (tools/voice.py).
+cat hat bat mat rat
+dog log frog fog
+cake lake snake bake
+bee tree three free
+star car jar far
+moon spoon soon noon
+fish dish wish
+ball wall tall fall
+sun run fun bun
+king ring sing wing
+bed red sled
+hen pen ten men
+pig dig wig big
+bug rug hug mug
+coat boat goat
+light night bright right
+snow grow slow
+duck truck luck
+book look cook hook
+box fox

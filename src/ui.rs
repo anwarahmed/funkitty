@@ -11,7 +11,8 @@ use ratatui::buffer::Buffer;
 use ratatui::layout::Rect;
 use ratatui::style::{Color, Modifier, Style};
 
-use crate::app::{Action, App, BALLOON, FLY, Fun, Game, Play, Screen};
+use crate::app::{Action, App, BALLOON, FLY, Face, Fun, Game, Play, Screen, Show, Thing};
+use crate::art;
 use crate::font;
 use crate::kitty::{self, GIFTS, Size};
 use crate::picture::Picture;
@@ -463,15 +464,19 @@ fn typing(buf: &mut Buffer, app: &mut App, area: Rect) {
     let mut bubble_rect = Rect::new(stage.side.x, stage.side.y, stage.side.width, high);
     let mut task_rect = Rect::new(stage.side.x, stage.side.y + high + 1, stage.side.width, stage.side.height.saturating_sub(high + 1));
 
-    if game == Game::Snack {
+    if game == Game::Snack || game == Game::Pictures {
         // The treat flies to her mouth when its word is typed. It waits above the
         // word, or, where a sentence needs every row there is, beside what she says.
+        // The picture of picture words stays where it is.
         let times = match task_rect.height {
             0..16 => 1,
             16..30 => 2,
             _ => 3,
         };
-        let picture = treat(at, times);
+        let picture = match art::find(&item.to_lowercase()) {
+            Some(art) if game == Game::Pictures => art.picture(times),
+            _ => treat(at, times),
+        };
         let (wide, rows) = picture.cells();
         let beside = times == 1;
         let home = if beside {
@@ -482,7 +487,7 @@ fn typing(buf: &mut Buffer, app: &mut App, area: Rect) {
         };
         let mouth =
             (app.kitty.x as f32 + (app.kitty.width as f32 - wide as f32) / 2.0, (app.kitty.y as f32 + app.kitty.height as f32 * 0.5) * 2.0 - rows as f32);
-        let flown = cheer.map_or(0.0, |age| if app.animations { (age / FLY).min(1.0) } else { 1.0 });
+        let flown = if game == Game::Pictures { 0.0 } else { cheer.map_or(0.0, |age| if app.animations { (age / FLY).min(1.0) } else { 1.0 }) };
         if flown < 1.0 {
             let x = home.0 + (mouth.0 - home.0) * flown;
             // A little arc on the way.
@@ -569,16 +574,97 @@ fn read(buf: &mut Buffer, r: Rect, text: &str, paint: &dyn Fn(usize, char) -> (c
     }
 }
 
-/// Story time: a sentence with a word missing, and three words to choose from.
-fn story(buf: &mut Buffer, app: &mut App, area: Rect) {
+/// The pictures of `things`, in rows in the middle of `r`, as big as they fit there:
+/// the big pictures where there is room, and the little ones where not. A sign (a
+/// plus, a question mark) takes the room of a picture.
+fn gallery(buf: &mut Buffer, r: Rect, things: &[Thing], fg: Rgb) {
+    if things.is_empty() || r.width == 0 || r.height == 0 {
+        return;
+    }
+    let art_of = |name: &str, big: bool| {
+        let (first, second) = if big { (art::pictures(), art::things()) } else { (art::things(), art::pictures()) };
+        first.iter().chain(second).find(|art| art.name == name)
+    };
+    let tries = [(true, 3), (true, 2), (true, 1), (false, 2), (false, 1)];
+    let mut chosen = None;
+    for (i, &(big, times)) in tries.iter().enumerate() {
+        let pictures: Vec<Option<Picture>> = things
+            .iter()
+            .map(|thing| match thing {
+                Thing::Picture(name) => art_of(name, big).map(|art| art.picture(times)),
+                Thing::Faded(name) => art_of(name, big).map(|art| art.faded(times)),
+                Thing::Sign(_) => None,
+            })
+            .collect();
+        let wide = pictures.iter().flatten().map(|p| p.cells().0).max().unwrap_or(5).max(7);
+        let high = pictures.iter().flatten().map(|p| p.cells().1).max().unwrap_or(4).max(4);
+        let across = ((r.width + 1) / (wide + 1)).max(1) as usize;
+        let rows = things.len().div_ceil(across) as u16;
+        chosen = Some((pictures, wide, high, across));
+        if rows * high <= r.height || i == tries.len() - 1 {
+            break;
+        }
+    }
+    let Some((pictures, wide, high, across)) = chosen else { return };
+    let rows = things.len().div_ceil(across) as u16;
+    let top = r.y + r.height.saturating_sub(rows * high) / 2;
+    for (row, chunk) in things.chunks(across).enumerate() {
+        let count = chunk.len() as u16;
+        let left = r.x + r.width.saturating_sub(count * (wide + 1) - 1) / 2;
+        for (i, thing) in chunk.iter().enumerate() {
+            let x = left + i as u16 * (wide + 1);
+            let y = top + row as u16 * high;
+            match (&pictures[row * across + i], thing) {
+                (Some(picture), _) => {
+                    let (w, h) = picture.cells();
+                    picture.blit(buf, (x + (wide - w) / 2) as i32, ((y + (high - h) / 2) * 2) as i32);
+                }
+                (None, Thing::Sign(sign)) => {
+                    let scale = ((high as usize * 2) / 9).clamp(1, 3);
+                    let text = sign.to_string();
+                    let (w, h) = ((font::width(&text) * scale) as u16, (font::HEIGHT * scale) as u16);
+                    font::draw(buf, (x + wide.saturating_sub(w) / 2) as i32, (y * 2 + (high * 2).saturating_sub(h) / 2) as i32, &text, color(fg), scale);
+                }
+                _ => {}
+            }
+        }
+    }
+}
+
+/// A question's text, with the right answer in its place once it is found, and in the
+/// color of a right answer.
+fn sentence(buf: &mut Buffer, r: Rect, text: &str, answer: Option<&str>, theme: &Theme) {
+    match answer {
+        Some(answer) => {
+            let before = text.split(BLANK).next().unwrap_or("").chars().count();
+            let word = answer.chars().count();
+            read(buf, r, &text.replace(BLANK, answer), &|i, c| (c, if (before..before + word).contains(&i) { theme.good } else { theme.text }));
+        }
+        None => read(buf, r, text, &|_, c| (c, theme.text)),
+    }
+}
+
+/// A question with three answers: story time, counting, picture words, big and
+/// little, "What's next?". Above the answers is a sentence, or pictures.
+fn quiz(buf: &mut Buffer, app: &mut App, area: Rect) {
     let theme = app.theme();
     let Some(task) = &app.task else { return };
     let Play::Quiz(quiz) = &task.play else { return };
     let Some(question) = quiz.items.get(quiz.at) else { return };
-    let easy = task.level == Level::Easy;
     let (text, options, right, tried, solved) = (question.text.clone(), question.options.clone(), question.right, quiz.tried, quiz.solved.is_some());
+    let (show, pictures, keyed) = (question.show.clone(), question.pictures, question.keys.is_some());
 
     let high = match area.height {
+        // Pictures to choose from need the room of a picture.
+        _ if pictures => {
+            if area.height >= 44 {
+                15
+            } else {
+                8
+            }
+        }
+        // A letter or a number to choose is the whole point: in letters, always.
+        _ if keyed && options.iter().all(|o| o.chars().count() <= 2) => 6,
         0..34 => 3,
         // Six, not five: the four rows inside its frame that small letters need.
         _ => 6,
@@ -587,32 +673,184 @@ fn story(buf: &mut Buffer, app: &mut App, area: Rect) {
     kitty(buf, app, stage.kitty, stage.size, 0.0);
     let rows = bubble_rows(stage.side.height);
     bubble(buf, Rect::new(stage.side.x, stage.side.y, stage.side.width, rows), &app.bubble, theme);
-    let sentence = Rect::new(stage.side.x, stage.side.y + rows + 1, stage.side.width, stage.side.height.saturating_sub(rows + 1));
-    if solved {
-        // The whole sentence, with its word in place and in the color of a right answer.
-        let before = text.split(BLANK).next().unwrap_or("").chars().count();
-        let word = options[right].chars().count();
-        read(buf, sentence, &text.replace(BLANK, &options[right]), &|i, c| (c, if (before..before + word).contains(&i) { theme.good } else { theme.text }));
-    } else {
-        read(buf, sentence, &text, &|_, c| (c, theme.text));
+    let above = Rect::new(stage.side.x, stage.side.y + rows + 1, stage.side.width, stage.side.height.saturating_sub(rows + 1));
+    let answer = solved.then(|| options[right].as_str());
+    match &show {
+        Show::Text => sentence(buf, above, &text, answer, theme),
+        Show::Things(things) => {
+            // The pictures, and under them the text, when there is any: a sum.
+            let caption = if text.is_empty() {
+                0
+            } else if above.height >= 16 {
+                5
+            } else {
+                above.height.min(2) - 1
+            };
+            gallery(buf, Rect::new(above.x, above.y, above.width, above.height - caption), things, theme.text);
+            if caption > 0 {
+                sentence(buf, Rect::new(above.x, above.bottom() - caption, above.width, caption), &text, answer, theme);
+            } else if !text.is_empty() {
+                // No room for it under the pictures: over them, plain, at the top.
+                let shown = match answer {
+                    Some(answer) => text.replace(BLANK, answer),
+                    None => text.clone(),
+                };
+                centered(buf, above, above.y, &shown, if solved { theme.good } else { theme.text });
+            }
+        }
     }
 
-    let row = Rect::new(stage.below.x + 1, stage.below.y + 1, stage.below.width - 2, high);
+    // Pictures to choose from have every row there is under her, the one between too.
+    let gap = u16::from(!pictures);
+    let row = Rect::new(stage.below.x + 1, stage.below.y + gap, stage.below.width - 2, high.min(stage.below.height.saturating_sub(1 + gap)));
     if solved {
-        let next = Rect::new(row.x + row.width / 4, row.y, row.width / 2, row.height);
+        let next = Rect::new(row.x + row.width / 4, row.y, row.width / 2, row.height.min(6));
         pressed(buf, app, next, Some(Action::Next), theme.accent, "Next", alike(1, [("Next", inside(next))]));
-    } else {
-        // On Easy the words are letters, and the letter's own key chooses it.
-        let words: Vec<String> = (0..3).map(|i| if easy { options[i].clone() } else { format!("{}: {}", (b'A' + i as u8) as char, options[i]) }).collect();
-        let places = across(row, 3);
-        // The three alike, the one already tried too.
-        let how = alike(2, words.iter().map(String::as_str).zip(places.iter().map(|&r| inside(r))));
+        if pictures {
+            // The picture that was right, beside "Next".
+            let r = Rect::new(next.right() + 1, row.y, row.right().saturating_sub(next.right() + 1), row.height);
+            gallery(buf, r, &[Thing::Picture(art_name(&options[right]))], theme.text);
+        }
+        return;
+    }
+    let places = across(row, 3);
+    if pictures {
         for (i, r) in places.into_iter().enumerate() {
-            if tried[i] {
-                pressed(buf, app, r, None, mix(theme.panel, theme.bg, 0.5), &words[i], how);
+            let (action, bg, thing) = if tried[i] {
+                (None, mix(theme.panel, theme.bg, 0.5), Thing::Faded(art_name(&options[i])))
             } else {
-                pressed(buf, app, r, Some(Action::Pick(i)), theme.buttons[i], &words[i], how);
+                (Some(Action::Pick(i)), mix(theme.buttons[i], theme.bg, 0.55), Thing::Picture(art_name(&options[i])))
+            };
+            let inside = button(buf, app, r, action, bg);
+            // The picture over the frame when it needs every row and column.
+            let room = if inside.width >= 15 && inside.height >= 7 { inside } else { r };
+            gallery(buf, room, &[thing], theme.text);
+            put(buf, r.x + 1, r.y, &((b'A' + i as u8) as char).to_string(), ink(bg), 1);
+        }
+        return;
+    }
+    // Answers with keys of their own are those keys; the others are A, B and C.
+    let words: Vec<String> = (0..3).map(|i| if keyed { options[i].clone() } else { format!("{}: {}", (b'A' + i as u8) as char, options[i]) }).collect();
+    // The three alike, the one already tried too.
+    let how = alike(2, words.iter().map(String::as_str).zip(places.iter().map(|&r| inside(r))));
+    for (i, r) in places.into_iter().enumerate() {
+        if tried[i] {
+            pressed(buf, app, r, None, mix(theme.panel, theme.bg, 0.5), &words[i], how);
+        } else {
+            pressed(buf, app, r, Some(Action::Pick(i)), theme.buttons[i], &words[i], how);
+        }
+    }
+}
+
+/// The name of a picture, as the `&'static str` a `Thing` holds.
+fn art_name(name: &str) -> &'static str {
+    art::find(name).map_or("", |art| art.name)
+}
+
+/// A bubble `radius` pixels round: clear, with a rim of `tint` and a shine.
+fn soap(radius: i32, tint: Rgb, inner: Rgb) -> Picture {
+    let side = radius * 2 + 1;
+    let mut picture = Picture::new(side, side);
+    for y in 0..side {
+        for x in 0..side {
+            let (dx, dy) = (x - radius, y - radius);
+            let far = dx * dx + dy * dy;
+            if far <= radius * radius + radius / 2 {
+                let rim = far >= (radius - 1) * (radius - 1);
+                picture.set(x, y, if rim { tint } else { inner });
             }
+        }
+    }
+    picture.set(radius / 2, radius / 2, (255, 255, 255));
+    picture.set(radius / 2 + 1, radius / 2 - 1, (255, 255, 255));
+    picture
+}
+
+/// Bubbles: rising in their lanes beside her, a letter or a word on each.
+fn bubbles(buf: &mut Buffer, app: &mut App, area: Rect) {
+    let theme = app.theme();
+    let stage = stage(area, 0);
+    kitty(buf, app, stage.kitty, stage.size, 0.0);
+    let rows = bubble_rows(stage.side.height);
+    bubble(buf, Rect::new(stage.side.x, stage.side.y, stage.side.width, rows), &app.bubble, theme);
+    let field = Rect::new(stage.side.x, stage.side.y + rows + 1, stage.side.width, stage.side.height.saturating_sub(rows + 1));
+    let Some(task) = &app.task else { return };
+    let Play::Bubbles(state) = &task.play else { return };
+    let easy = task.level == Level::Easy;
+    let lane = field.width / state.lanes.max(1) as u16;
+    // As big as their lanes and a third of the height allow.
+    let radius = [10, 7, 5, 3].into_iter().find(|&r| (2 * r + 1) as u16 <= lane && (r as u16 + 1) * 3 <= field.height).unwrap_or(3);
+    let (wide, high) = ((2 * radius + 1) as u16, (radius + 1) as u16);
+    let mut spots = Vec::new();
+    for b in state.bubbles.iter().filter(|b| b.popped.is_none() && (0.0..=1.0).contains(&b.y)) {
+        let tint = theme.buttons[b.color % theme.buttons.len()];
+        let inner = mix(tint, (255, 255, 255), 0.75);
+        let shake = if app.animations && b.wobble > 0.0 { ((app.time * 40.0).sin() * 2.0).round() as i32 } else { 0 };
+        let x = (field.x + b.lane as u16 * lane + (lane - wide) / 2) as i32 + shake;
+        let y = ((field.y * 2) as f32 + b.y * (field.height * 2).saturating_sub(high * 2) as f32).round() as i32;
+        soap(radius, tint, inner).blit(buf, x, y);
+        let (cx, cy) = (x + radius, y / 2 + (high as i32 - 1) / 2 + (y % 2));
+        let ink = ink(inner);
+        let label = Rect::new((x + 1).max(0) as u16, (cy - 1).max(0) as u16, wide.saturating_sub(2), 4.min(high));
+        if easy && radius >= 7 {
+            let scale = if radius >= 10 { 2 } else { 1 };
+            font::draw(buf, cx - (5 * scale) / 2, y + radius - (7 * scale) / 2, &b.label, color(ink), scale as usize);
+        } else if radius >= 10 && small_lines(&b.label, label).is_some() {
+            // Only on the biggest bubbles, where every word of the game fits.
+            small(buf, label, &b.label, &|_, c| (c, ink));
+        } else if let (Ok(column), Ok(row)) = (u16::try_from(cx - b.label.chars().count() as i32 / 2), u16::try_from(cy)) {
+            let w = b.label.chars().count() as u16;
+            fill(buf, Rect::new(column, row, w, 1).intersection(buf.area), inner);
+            put(buf, column, row, &b.label, ink, w);
+        }
+        let spot = Rect::new(x.max(0) as u16, (y / 2).max(0) as u16, wide, high + 1).intersection(field);
+        if spot.width > 0 && spot.height > 0 {
+            spots.push((spot, Action::Pop(b.id)));
+        }
+    }
+    app.buttons.extend(spots);
+}
+
+/// Pairs: the cards in rows beside her, face down until they are turned over.
+fn pairs(buf: &mut Buffer, app: &mut App, area: Rect) {
+    let theme = app.theme();
+    let stage = stage(area, 0);
+    kitty(buf, app, stage.kitty, stage.size, 0.0);
+    let rows = bubble_rows(stage.side.height);
+    bubble(buf, Rect::new(stage.side.x, stage.side.y, stage.side.width, rows), &app.bubble, theme);
+    let field = Rect::new(stage.side.x, stage.side.y + rows + 1, stage.side.width, stage.side.height.saturating_sub(rows + 1));
+    let Some(task) = &app.task else { return };
+    let Play::Pairs(state) = &task.play else { return };
+    let cards: Vec<(Face, usize, bool, bool)> = state.cards.iter().map(|c| (c.face.clone(), c.pair, c.open, c.matched)).collect();
+    let across_count = cards.len().div_ceil(2) as u16;
+    let card_high = field.height / 2;
+    let places: Vec<Rect> =
+        (0..2u16).flat_map(|row| across(Rect::new(field.x, field.y + row * card_high, field.width, card_high.saturating_sub(1)), across_count)).collect();
+    // The words and letters of all the cards alike, as big as the longest allows.
+    let texts: Vec<(String, Rect)> = cards
+        .iter()
+        .zip(&places)
+        .filter_map(|((face, ..), &r)| match face {
+            Face::Text(text) => Some((text.clone(), inside(r))),
+            Face::Picture(_) => None,
+        })
+        .collect();
+    let how = alike(3, texts.iter().map(|(text, r)| (text.as_str(), *r)));
+    for (i, ((face, pair, open, matched), r)) in cards.into_iter().zip(places).enumerate() {
+        let action = (!matched).then_some(Action::Card(i));
+        if !open {
+            let inside = button(buf, app, r, action, theme.buttons[i % theme.buttons.len()]);
+            label(buf, inside, "?", ink(theme.buttons[i % theme.buttons.len()]), 2);
+            continue;
+        }
+        let bg = if matched { mix(theme.buttons[pair % theme.buttons.len()], theme.bg, 0.6) } else { theme.panel };
+        match face {
+            Face::Picture(name) => {
+                let inside = button(buf, app, r, action, bg);
+                let room = if inside.width >= 15 && inside.height >= 7 { inside } else { r };
+                gallery(buf, room, &[Thing::Picture(name)], theme.text);
+            }
+            Face::Text(text) => pressed(buf, app, r, action, bg, &text, how),
         }
     }
 }
@@ -620,14 +858,16 @@ fn story(buf: &mut Buffer, app: &mut App, area: Rect) {
 fn play(buf: &mut Buffer, app: &mut App, area: Rect) {
     let Some(task) = &app.task else { return };
     let (game, kind) = (task.game, std::mem::discriminant(&task.play));
-    top(buf, app, area, game.name(), game == Game::Says || game == Game::Story);
+    top(buf, app, area, game.name(), game.repeats());
     let rest = Rect::new(area.x, area.y + 1, area.width, area.height - 1);
     let Some(task) = &app.task else { return };
     debug_assert_eq!(kind, std::mem::discriminant(&task.play));
     match task.play {
         Play::Typing(_) => typing(buf, app, rest),
         Play::Yarn(_) => yarn(buf, app, rest),
-        Play::Quiz(_) => story(buf, app, rest),
+        Play::Quiz(_) => quiz(buf, app, rest),
+        Play::Bubbles(_) => bubbles(buf, app, rest),
+        Play::Pairs(_) => pairs(buf, app, rest),
     }
 }
 
@@ -675,23 +915,18 @@ fn home(buf: &mut Buffer, app: &mut App, area: Rect) {
     let high = bubble_rows(side.height);
     bubble(buf, Rect::new(side.x, side.y, side.width, high), &app.bubble, theme);
 
-    // What is left under the bubble: three rows of two games, the levels, the gifts.
+    // What is left under the bubble: four rows of three games, the levels, the gifts.
     let rest = side.height - high - 1;
-    let level_high = if rest >= 20 { 3 } else { 1 };
-    let game_high = ((rest - level_high - 5) / 3).clamp(1, 7);
+    let level_high = if rest >= 24 { 3 } else { 1 };
+    let game_high = ((rest - level_high - 6) / 4).clamp(1, 7);
     let mut y = side.y + high + 1;
-    let games: [(String, Action); 6] = [
-        (format!("1 {}", Game::Snack.name()), Action::Play(Game::Snack)),
-        (format!("2 {}", Game::Says.name()), Action::Play(Game::Says)),
-        (format!("3 {}", Game::Yarn.name()), Action::Play(Game::Yarn)),
-        (format!("4 {}", Game::Story.name()), Action::Play(Game::Story)),
-        ("5 Dress up".to_string(), Action::Dress),
-        ("6 Surprise".to_string(), Action::Surprise),
-    ];
-    for (row, pair) in games.chunks(2).enumerate() {
-        for (i, r) in across(Rect::new(side.x, y, side.width, game_high), 2).into_iter().enumerate() {
-            let (words, action) = &pair[i];
-            worded(buf, app, r, Some(*action), theme.buttons[row * 2 + i], words, 1);
+    let mut games: Vec<(String, Action)> = Game::ALL.iter().map(|game| (format!("{} {}", game.key(), game.name()), Action::Play(*game))).collect();
+    games.push(("D Dress up".to_string(), Action::Dress));
+    games.push(("R Surprise".to_string(), Action::Surprise));
+    for (row, three) in games.chunks(3).enumerate() {
+        for (i, r) in across(Rect::new(side.x, y, side.width, game_high), 3).into_iter().enumerate() {
+            let (words, action) = &three[i];
+            worded(buf, app, r, Some(*action), theme.buttons[(row * 3 + i) % theme.buttons.len()], words, 1);
         }
         y += game_high + 1;
     }
@@ -814,19 +1049,20 @@ fn greeting(buf: &mut Buffer, app: &mut App, area: Rect, words: &str, rise: f32)
     app.buttons.push((area, Action::Skip));
 }
 
-const HELP: [&str; 15] = [
+const HELP: [&str; 16] = [
     "Fun time with Pink Kitty",
     "",
     "Everything can be clicked. With the keyboard:",
     "",
     "Arrows or H J K L, then Enter    choose a button",
-    "1 2 3 4    the games      5 dress up      6 surprise",
+    "1 to 9 and 0    the games     D dress up     R surprise",
     "E    easy, medium or hard",
     "T theme      S sound      M motion      Q quit",
     "",
     "In a game, type the letters. A wrong key costs nothing.",
     "Tab    Pink Kitty says it again",
-    "A B C  or  1 2 3    the words of story time (on Easy, the letter)",
+    "A B C  or  1 2 3    choose an answer",
+    "Or the answer's own key: its letter, its number",
     "Esc    back to the home screen",
     "",
     "Every game wins a gift for Pink Kitty to wear.",
@@ -955,6 +1191,14 @@ mod tests {
         app.on_mouse(MouseEvent { kind: MouseEventKind::Up(MouseButton::Left), column, row, modifiers: KeyModifiers::NONE });
     }
 
+    /// Pops the bubble she asks for.
+    fn pop_right(app: &mut App) {
+        let Some(Play::Bubbles(bubbles)) = app.task.as_ref().map(|task| &task.play) else { panic!("not bubbles") };
+        let level = app.task.as_ref().unwrap().level;
+        let id = bubbles.bubbles.iter().find(|b| b.popped.is_none() && bubbles.fits(&b.label, level)).expect("a bubble that fits").id;
+        app.act(Action::Pop(id));
+    }
+
     /// Plays story time to its party, by trying every word of every story.
     fn to_the_party(app: &mut App) {
         app.start(Game::Story);
@@ -1018,6 +1262,16 @@ mod tests {
                         later.act(Action::Pick(right));
                         later.advance(0.2);
                     }
+                    Play::Bubbles(_) => {
+                        later.advance(2.0);
+                        pop_right(&mut later);
+                        later.advance(0.1);
+                    }
+                    Play::Pairs(_) => {
+                        later.act(Action::Card(0));
+                        later.act(Action::Card(1));
+                        later.advance(0.2);
+                    }
                 }
                 states.push((format!("{} at {}, later", game.name(), level.name()), later));
             }
@@ -1073,7 +1327,9 @@ mod tests {
         let mut app = app();
         app.gifts.hearts = 2;
         let lines = screen(&mut app, MIN.0, MIN.1);
-        for words in [TITLE, "What shall we do?", "1 Snack time", "2 Kitty says", "3 Yarn balls", "4 Story time", "5 Dress up", "6 Surprise"] {
+        for words in
+            [TITLE, "What shall we do?", "1 Snack time", "2 Kitty says", "3 Yarn balls", "4 Story time", "5 Counting", "6 Bubbles", "D Dress up", "R Surprise"]
+        {
             assert!(has(&lines, words), "no {words:?} in {lines:#?}");
         }
         for words in ["Easy (4-5)", "Medium (6-7)", "Hard (8-10)", "T candy", "S Sound on", "M Motion on", "? Help", "Q Quit", "Gifts: 0 of 12   Hearts: 2"] {
@@ -1092,7 +1348,7 @@ mod tests {
             let mut app = app();
             screen(&mut app, w, h);
             let all: Vec<Action> = app.buttons.iter().map(|&(_, action)| action).collect();
-            assert_eq!(all.len(), 14, "{w}x{h}");
+            assert_eq!(all.len(), 20, "{w}x{h}");
             let mut reached = vec![app.marker.unwrap()];
             let mut next = 0;
             while next < reached.len() {
@@ -1112,7 +1368,7 @@ mod tests {
                 assert!(reached.contains(action), "{w}x{h}: the arrows never reach {action:?}");
             }
             // Left of "Snack time" is nothing; right of it is "Kitty says", and under
-            // it "Yarn balls".
+            // it "Story time".
             app.marker = Some(Action::Play(Game::Snack));
             press(&mut app, KeyCode::Left);
             assert_eq!(app.marker, Some(Action::Play(Game::Snack)), "{w}x{h}");
@@ -1120,9 +1376,9 @@ mod tests {
             assert_eq!(app.marker, Some(Action::Play(Game::Says)), "{w}x{h}");
             press(&mut app, KeyCode::Left);
             press(&mut app, KeyCode::Down);
-            assert_eq!(app.marker, Some(Action::Play(Game::Yarn)), "{w}x{h}");
+            assert_eq!(app.marker, Some(Action::Play(Game::Story)), "{w}x{h}");
             press(&mut app, KeyCode::Enter);
-            assert_eq!(app.task.as_ref().map(|task| task.game), Some(Game::Yarn));
+            assert_eq!(app.task.as_ref().map(|task| task.game), Some(Game::Story));
         }
     }
 
@@ -1389,9 +1645,10 @@ mod tests {
                 let name = |(i, option): (usize, &String)| if easy { option.clone() } else { format!("{}: {option}", (b'A' + i as u8) as char) };
                 options.iter().enumerate().map(name).collect()
             };
-            // Too small a window for letters: every answer in the terminal's text.
+            // Too small a window for words in letters: every answer in the terminal's
+            // text. Easy's answers are single letters, which are always big.
             let lines = screen(&mut app, MIN.0, MIN.1);
-            assert!(options.iter().all(|option| has(&lines, option)), "{level:?}");
+            assert_eq!(options.iter().all(|option| has(&lines, option)), !easy, "{level:?}");
             // Room for letters: none of them in the terminal's text, unless one is too long for a third of the window.
             for (w, h) in [(100, 36), (140, 42), (206, 45)] {
                 let lines = screen(&mut app, w, h);

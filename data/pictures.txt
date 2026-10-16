@@ -1,0 +1,271 @@
+# Pictures of things, for picture words, pairs and the patterns of "What's next?".
+#
+#   : X r g b      a color, named by one character
+#   = name         a picture, its rows under it: a character of a color, or . for nothing
+#
+# The name is the word the picture is of, and it needs a voice clip (tools/voice.py).
+# A picture has a dark line drawn round it when it is shown, so its rows need no edge.
+
+: K 50 40 60
+: W 255 255 255
+: R 235 65 75
+: P 255 150 195
+: O 250 150 50
+: Y 255 210 70
+: G 95 190 95
+: D 45 130 65
+: B 70 140 230
+: L 160 210 250
+: N 145 95 55
+: T 215 170 120
+: S 165 165 178
+: V 155 110 225
+
+= cat
+.S.........S.
+.SS.......SS.
+.SSS.....SSS.
+.SSSSSSSSSSS.
+SSSSSSSSSSSSS
+SSSKSSSSSKSSS
+SSSKSSSSSKSSS
+SSSSSSPSSSSSS
+SKSSSKSKSSSKS
+.SSSSSSSSSSS.
+..SSSSSSSSS..
+
+= dog
+NN..TTTTT..NN
+NNNTTTTTTTNNN
+NNTTTTTTTTTNN
+NNTKTTTTTKTNN
+NNTTTTTTTTTNN
+NN.TTTKTTT.NN
+N..TTKKKTT..N
+...TTTRTTT...
+....TTRTT....
+.....TTT.....
+
+= fish
+.....BBB.....
+...BBBBBB...B
+.BBBBBBBBB.BB
+BBWKBBBBBBBBB
+BBBBBBLBLBBBB
+.BBBBBBBBBBBB
+...BBBBBBB.BB
+.....BBB....B
+
+= sun
+......Y......
+..Y...Y...Y..
+...Y.....Y...
+.....OOO.....
+....OOOOO....
+YY.OOOOOOO.YY
+....OOOOO....
+.....OOO.....
+...Y.....Y...
+..Y...Y...Y..
+......Y......
+
+= moon
+....YYYY.
+..YYYYY..
+.YYYYY...
+YYYYY....
+YYYYY....
+YYYYY....
+.YYYYY...
+..YYYYY..
+....YYYY.
+
+= star
+......Y......
+.....YYY.....
+.....YYY.....
+YYYYYYYYYYYYY
+.YYYYYYYYYYY.
+...YYYYYYY...
+...YYYYYYY...
+..YYYY.YYYY..
+..YYY...YYY..
+.YY.......YY.
+
+= tree
+....GGGGG....
+..GGGGGGGGG..
+.GGGGGDGGGGG.
+GGGDGGGGGGDGG
+GGGGGGGGGGGGG
+.GGGGGDGGGGG.
+..GGGGGGGGG..
+.....NNN.....
+.....NNN.....
+....NNNNN....
+
+= apple
+......N.....
+......N.GG..
+.....NGGG...
+..RRRNRRRR..
+.RRWRRRRRRR.
+RRWRRRRRRRRR
+RRRRRRRRRRRR
+RRRRRRRRRRRR
+.RRRRRRRRRR.
+..RRR..RRR..
+
+= ball
+....RRRRR....
+..RRRRRRRRR..
+.RWWRRRRRRRR.
+.RWRRRRRRRRR.
+RRRRRRRRRRRRR
+RRRRRRRRRRRRR
+RRRRRRRRRRRRR
+.RRRRRRRRRRR.
+.RRRRRRRRRRR.
+..RRRRRRRRR..
+....RRRRR....
+
+= cake
+.....R.......
+....WWW......
+...PWPPPP....
+..PPPPPPPPP..
+.WWWWWWWWWWW.
+.TTTTTTTTTTT.
+.PPPPPPPPPPP.
+.TTTTTTTTTTT.
+WWWWWWWWWWWWW
+
+= car
+...RRRRRR....
+..RLLRLLLR...
+.RRLLRLLLLR..
+RRRRRRRRRRRRR
+RRRRRRRRRRRRR
+RRRRRRRRRRRRR
+.KKK.....KKK.
+.KSK.....KSK.
+..K.......K..
+
+= boat
+......NW.....
+......NWW....
+......NWWW...
+......NWWWW..
+......NWWWWW.
+......N......
+RRRRRRRRRRRRR
+.RRRRRRRRRRR.
+..RRRRRRRRR..
+LLBLLLLLLBLLL
+
+= house
+......R......
+....RRRRR....
+..RRRRRRRRR..
+RRRRRRRRRRRRR
+.YYYYYYYYYYY.
+.YLLYYYYLLYY.
+.YLLYYYYLLYY.
+.YYYYNNYYYYY.
+.YYYYNNYYYYY.
+.YYYYNNYYYYY.
+
+= hat
+....VVVVV....
+...VVVVVVV...
+...VVVVVVV...
+...VVVVVVV...
+...PPPPPPP...
+...VVVVVVV...
+VVVVVVVVVVVVV
+.VVVVVVVVVVV.
+
+= cup
+.............
+.LLLLLLLLL...
+.LBBBBBBBLLL.
+.LLLLLLLLL.L.
+.LLLLLLLLL.L.
+.LLLLLLLLL.L.
+.LLLLLLLLLLL.
+..LLLLLLL....
+...LLLLL.....
+
+= duck
+...YYYY......
+..YYYYYY.....
+OOYKYYYY.....
+OOYYYYYY.....
+...YYYY....Y.
+..YYYYYYYYYY.
+.YYYYYYYYYYY.
+.YYYYYYYYYY..
+..YYYYYYYY...
+....OO.OO....
+
+= flower
+...PP.PP...
+..PPPPPPP..
+.PPPYYYPPP.
+..PPYYYPP..
+.PPPYYYPPP.
+..PPPPPPP..
+...PP.PP...
+.....D.....
+...GGD.....
+.....DGG...
+.....D.....
+
+= key
+.YYYY........
+YYYYYY.......
+YY..YYYYYYYYY
+YYYYYY...Y.YY
+.YYYY....Y.Y.
+
+= heart
+..RRR...RRR..
+.RRRRR.RRRRR.
+RRWRRRRRRRRRR
+RRWRRRRRRRRRR
+RRRRRRRRRRRRR
+.RRRRRRRRRRR.
+..RRRRRRRRR..
+...RRRRRRR...
+.....RRR.....
+......R......
+
+= bee
+.....LL.LL...
+....LLLLLLL..
+.....LLLLL...
+..YYKKYYKKY..
+.YKYKKYYKKYY.
+YYYYKKYYKKYYK
+.YYYKKYYKKYY.
+..YYKKYYKKY..
+
+= frog
+..GGG...GGG..
+.GWKWG.GWKWG.
+.GGGGGGGGGGG.
+GGGGGGGGGGGGG
+GGRRRRRRRRRGG
+GGGGGGGGGGGGG
+.GGGGGGGGGGG.
+GGG.......GGG
+
+= bird
+....BBBB....
+...BBBBBB...
+..BBKBBBBB..
+.OBBBBBBBBB.
+OOBBLLLLBBB.
+...BLLLLBBBB
+....BBBBB.BB
+.....O.O....

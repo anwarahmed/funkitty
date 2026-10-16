@@ -1,7 +1,7 @@
 # funkitty
 
-"Fun time with Pink Kitty": four little reading and typing games for young children in
-the terminal (TUI), a dressing room for the gifts they win, and a celebration after
+"Fun time with Pink Kitty": ten little games of reading, typing, counting and
+patterns for young children in the terminal (TUI), a dressing room for the gifts they win, and a celebration after
 everything. Pink Kitty speaks. Keyboard and mouse both do everything. Rust + ratatui,
 targets macOS and Linux. `README.md` is for players and parents; this file is for
 whoever changes the code. [docs/DESIGN.md](docs/DESIGN.md) is the longer record of
@@ -17,8 +17,8 @@ cargo test                                   # unit tests: words, voice, sound, 
 cargo clippy --all-targets -- -D warnings    # no warnings allowed
 cargo fmt                                    # rustfmt.toml: max_width 160
 cargo build --release && tests/e2e.sh        # the built program in tmux, install.sh, the updater
-cargo run -q -- voice-lines | tools/voice.py # make the voice clips that are missing or out of date
-tools/voice-check.py --retake 8              # list the clips a speech recognizer does not hear as written, and say those again
+cargo run -q -- voice-lines | ~/.cache/funkitty-voice/venv/bin/python tools/voice.py  # make the voice clips that are missing or out of date
+~/.cache/funkitty-voice/venv/bin/python tools/voice-check.py --retake 6          # list the clips a speech recognizer does not hear as written, and say those again
 FUNKITTY_LOG=/tmp/events.log cargo run       # record every key and mouse event received
 ```
 
@@ -65,9 +65,11 @@ Single binary crate, no async, no threads. One file per concern in `src/`:
 | File         | Role |
 |--------------|------|
 | `main.rs`    | CLI, terminal setup/teardown, the event loop (80 ms poll, 16 ms while something moves) |
-| `words.rs`   | The levels, and everything read from `data/`: words, sentences, stories, what she says. `spoken()` lists every clip the game can ask for. The small `Rng`. Knows nothing about the screen |
-| `app.rs`     | `App` state; what every key, click and tick does; the four games (`Typing`, `Yarn`, `Quiz`); the parties and little celebrations; `Gifts`; particles |
-| `ui.rs`      | All drawing: layouts, her place on each screen, treats, balls of yarn, the keyboard, and the clickable rectangles (`App::buttons`) |
+| `words.rs`   | The levels, and everything read from `data/`: words, sentences, stories, rhymes, numbers, what she says. `spoken()` lists every clip the game can ask for. The small `Rng`. Knows nothing about the screen |
+| `lessons.rs` | What counting, picture words, big and little, and "What's next?" ask at each level (as `Question`s), and the cards of pairs. Knows nothing about the screen |
+| `art.rs`     | The pictures of things, read from `data/pictures.txt` and `data/things.txt` |
+| `app.rs`     | `App` state; what every key, click and tick does; the games (`Typing`, `Yarn`, `Quiz`, `Bubbles`, `Pairs`); the parties and little celebrations; `Gifts`; particles |
+| `ui.rs`      | All drawing: layouts, her place on each screen, treats, balls of yarn, bubbles, cards, rows of pictures (`gallery`), the keyboard, and the clickable rectangles (`App::buttons`) |
 | `kitty.rs`   | Pink Kitty: drawn out of ellipses and triangles each frame, with her face, paws and gifts |
 | `picture.rs` | `Picture`: square pixels, two to a cell, with empty pixels that keep what is under them |
 | `font.rs`    | The 5x7 bitmap letters, drawn with half-block characters, and at half that size with quarter-block ones |
@@ -110,12 +112,25 @@ mouse moves it to whatever it is over.
   the same as the last. A new one is a variant of the enum, its entry in `ALL`, and
   an arm in `App::throw` or `App::cheer`; tests go through `ALL`.
 - **The levels** are the user's age range cut in three: Easy 4-5 (single letters, the
-  wanted key lit on the screen's keyboard), Medium 6-7 (short words), Hard 8-10
-  (longer words, sentences, spelling by ear). The level is one setting for all games.
+  wanted key lit on the screen's keyboard, pictures, counting to five), Medium 6-7
+  (short words, counting to ten, the alphabet), Hard 8-10 (longer words, sentences,
+  spelling by ear, sums, rhymes, counting in twos, fives and tens). The level is one
+  setting for all games.
+- **Ten games.** Asked (2026-10-16) to make it "more fun and educational", the user
+  picked all four of the ideas offered (counting, a bubble game for the mouse, picture
+  words, big and little letters) "and a few more": pairs (a memory game) and "What's
+  next?" (patterns). Counting, picture words, big and little and "What's next?" are
+  the story-time engine (`Quiz`, three answers, a `Question` each, made in
+  `lessons.rs`), with `Show::Things` for pictures above the answers and
+  `Question::pictures` for pictures as the answers. Hard picture words is the typing
+  game with a picture to spell. Games are keys 1 to 9 and 0 on the home screen,
+  three to a row; dress up is D and surprise R.
 - **In a typing game a letter is only a letter.** So the commands that are letters on
   the home screen (`T`, `S`, `M`, `Q`, `E`, and `H` `J` `K` `L` as arrows) are not
-  commands there; only `Esc` and `Tab` are. Easy story time is the same, because its
-  answers are letters. Ctrl with a letter does nothing anywhere, except `Ctrl-C`.
+  commands there; only `Esc` and `Tab` are. Easy bubbles are the same (the arrow keys
+  still move the marker there), and so is a question whose answers have keys of their
+  own (`Question::keys`: Easy story time's letters, big and little, counting's
+  digits, 0 for ten). Ctrl with a letter does nothing anywhere, except `Ctrl-C`.
 - **A party takes no notice of the keyboard for its first second** (`app::GRACE`).
   Whoever was typing when it began is still typing, and without this a stray `L`
   moved the marker, `M` switched the animations off and `Esc` ended the party
@@ -125,23 +140,36 @@ mouse moves it to whatever it is over.
 - **The keyboard on the screen** makes the typing games playable by mouse (the user
   wants everything usable by both), and shows a beginner where the keys are.
 - **She speaks with recorded clips**, not a speech synthesizer at run time (the user
-  chose "generated": made once with Piper). `tools/voice.py` makes one clip for each
+  chose "generated": made once, now with Kokoro, before 0.2.0 with Piper). `tools/voice.py` makes one clip for each
   line of `words::spoken()` and records the text in `voice/lines.tsv`; a test fails
   when a line has no clip or the clip was made from other text. What she says is
-  several clips joined ("Can you type" + "cat"), so there are about 370 clips and not
-  thousands. The clips are IMA ADPCM (a quarter the size of plain samples, about 3.5 MB
-  in all) and `voice.rs` decodes them itself; the decoder was checked sample for
+  several clips joined ("Can you type" + "cat"), so there are about 470 clips and not
+  thousands. The clips are IMA ADPCM (a quarter the size of plain samples) and `voice.rs` decodes them itself; the decoder was checked sample for
   sample against ffmpeg's.
 - **The voice's licence matters.** The clips are distributed with the program, so the
-  Piper voice must be one whose training data allows that. The current voice and its
-  licence are named at the top of `tools/voice.py` and credited in `voice/README.md`:
-  `en_US-libritts_r-medium`, reader 20, CC BY 4.0. `en_US-hfc_female` was the first
-  choice until its licence was read (CC BY-NC-SA). `docs/DESIGN.md` has the scores.
-- **Her pitch is the user's choice.** The user asked (2026-10-08, after 0.1.1) for a
-  higher voice, listened to one sentence at 1.14 (as it was), 1.25, 1.35, 1.5 and
-  1.65, and at 1.35 and 1.5 with only the pitch raised and not the size of the voice,
-  and picked 1.35 (`PITCH` in `tools/voice.py`). The speech recognizer hears fewer
-  clips as written at this pitch (338 of 372, from 356); the user kept it knowing that.
+  voice must be one whose licence allows that. The current voice and its licence are
+  named at the top of `tools/voice.py` and credited in `voice/README.md`: Kokoro-82M
+  (Apache 2.0), voice `bf_lily`. Before it, Piper's `en_US-libritts_r-medium` (reader
+  20, CC BY 4.0); `en_US-hfc_female` was turned down for its licence (CC BY-NC-SA).
+- **Her voice is the user's choice.** The user found Piper "robotic/androidish" and
+  asked (2026-10-16) for her to sound more like a cute kitty, with tone and emotion.
+  They listened to six Kokoro voices (`af_heart`, `af_bella`, `af_nicole`, `af_sky`,
+  `bf_lily`, a blend of heart and bella) at pitch 1.0, 1.15 and 1.3, against Piper as
+  it was, and chose `bf_lily` at 1.3 (`VOICE`, `PITCH`). Kokoro has no setting for
+  feelings, so the feeling is in `MOODS`: what she says when pleased (praise, parties,
+  yum, gifts, hello, the openings of games) is a little quicker and 5% higher;
+  comfort is slower and 3% lower; letters, words and numbers are slow and clear.
+  Earlier (2026-10-08) they had chosen Piper at 1.35 from 1.14 to 1.65.
+- **Lily says single words less clearly, and the user kept her knowing that.** Said
+  alone, a short word often comes out with a sound after it ("sheep" heard as
+  "Sheeba", "wall" as "wallet"). On the 44 words the recognizer missed most, Lily got
+  12 right where `af_bella` got 32 and `af_heart` 29; joined after "Can you type", 14
+  of 42 where Piper's clips got 30. Offered Bella instead, the user chose to keep
+  Lily with her words fixed up: every letter, word and number is said in quotation
+  marks (`tools/voice.py`), and `tools/voice-check.py --retake` cuts one that is
+  still misheard out of a sentence such as "Can you type sheep?". That took her from
+  304 to 375 of the 468 clips heard as written (Piper was at 338 of 372): 72 single
+  words, 9 letters, 6 numbers and 6 other clips are left, listed by the check.
 - **The way back from the dressing room is one large button** along the bottom
   (the user asked, 2026-10-08, since 0.1.2), not the small "Esc Back" of the top row
   that the games have. It is still called "Esc Back", which `tests/e2e.sh` clicks.
@@ -165,6 +193,16 @@ mouse moves it to whatever it is over.
 - **Text size.** The user asked (in fungeo) that text not be small. What is typed and
   read is drawn in `font.rs`'s big letters wherever it fits (`ui::letters`), each
   letter in its own color: typed, next, still to come.
+- **The big font has small letters** since big and little was built, so whatever is
+  written in mixed case (the title, her speech bubble when big, a story's sentence,
+  words in bubbles and on cards) is drawn as written. What is typed stays in capitals,
+  as the keys are. The small letters are an LCD's 5x7 shapes, with the body five rows
+  tall on the line, so that b and d, p and q are each other's mirror images: big and
+  little offers the turned-over letter as a wrong answer.
+- **Pictures are plain files** too: `data/pictures.txt` (13 by 11 pixels at most, so
+  that three fit beside her in an 80x24 window) and `data/things.txt` (little ones,
+  so that ten can be counted there). `ui::gallery` draws a row of them as big as it
+  fits, using the little ones where the big do not.
 - **A story's answer boxes are in letters too.** The user found it odd (2026-10-08,
   since 0.1.3) that the sentence was huge and the three answers under it were the
   terminal's small text, and meant the answer boxes: the menus may stay plain. So
@@ -209,24 +247,25 @@ mouse moves it to whatever it is over.
   draws that as a picture. Pass it a size, options and keys to look at any screen;
   `SHOT_GIFTS` gives her gifts to start with. Look at 80x24 and at about 140x42: she
   is a different drawing at each.
-- A scripted player cannot read big letters. `tests/e2e.sh` gets through snack time
-  and yarn balls by typing the whole alphabet (wrong keys cost nothing), through
-  "Kitty says" by reading the letter out of her speech bubble, and through story time
-  by trying A, B and C.
+- A scripted player cannot read big letters. `tests/e2e.sh` gets through snack time,
+  yarn balls and Easy bubbles by typing the whole alphabet (wrong keys cost nothing),
+  through "Kitty says" by reading the letter out of her speech bubble, through story
+  time by trying A, B and C, and through counting by pressing every digit. The other
+  new games it only starts; `cargo test` plays every game at every level to its party.
 - The voice: `tools/voice-check.py` has a speech recognizer transcribe every clip.
-  Piper does not say a thing the same way twice, and about one single word in six
-  comes out with its first sound swallowed ("pie" heard as "hi"), so after making
-  clips run it with `--retake 8`, which has those said again until a take is heard
-  as written. What is left is mostly words that sound like another ("sea", "deer");
+  Lily often says a single word with a sound after it ("sheep" heard as "Sheeba"),
+  so after making clips run it with `--retake 6`: for a letter, word or number every
+  other take cuts it out of a sentence ("Can you type sheep?"), the others say it
+  alone a shade faster or slower, until a take is heard as written. A whole check
+  with retakes takes about two hours. What is left is mostly words that sound like another ("sea", "deer");
   treat its list as clips to listen to, not as failures.
 
 ## Known gaps
 
 - **Nobody has heard it.** The sound effects were checked as numbers only, and the
-  voice only through a speech recognizer, which hears 338 of the 372 clips as written
-  (and what the running game says, joined up, as the sentences they are). Whether she
-  sounds pleasant, and like a kitty a child would like, no test can say. The user
-  has heard one sample sentence at each pitch offered, not the 372 clips. Whoever
+  voice only through a speech recognizer, which hears 375 of the 468 clips as written.
+  The user chose her from samples of five sentences and of a few words, not by
+  hearing the 468 clips. Whoever
   listens first should expect to find clips to remake: delete them and run
   `tools/voice.py`, or change the numbers at its top. The single letters and short
   words the recognizer misses are the ones to start with (`tools/voice-check.py`).
@@ -234,9 +273,6 @@ mouse moves it to whatever it is over.
 - Never run by a person on a Mac; CI runs the tests there.
 - The AUR package `funkitty-bin` is rendered for each release but not pushed: the
   user has no AUR account.
-- The big font has no lower case, so everything read in big letters is in capitals.
-  A child learning lower-case letters sees them only in the speech bubble.
-- The words, sentences and stories are in English only, and unreviewed.
-- Ideas offered and not built: counting (how many fish?), words for pictures, a
-  mouse game (popping bubbles), rhymes, capital and small letters, simple sums,
-  a daily surprise, a profile for each child.
+- The words, sentences, stories, rhymes and pictures are in English only, and
+  unreviewed. The pictures were drawn by Claude and looked at only as captured frames.
+- Ideas offered and not built: a daily surprise, a profile for each child.

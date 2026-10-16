@@ -108,6 +108,62 @@ pub fn sentences() -> &'static [&'static str] {
     SENTENCES.get_or_init(|| rows(include_str!("../data/sentences.txt")).collect())
 }
 
+/// Families of words that rhyme: every word of one rhymes with the others, and with
+/// nothing in another family.
+pub fn rhymes() -> &'static [Vec<&'static str>] {
+    static FAMILIES: OnceLock<Vec<Vec<&'static str>>> = OnceLock::new();
+    FAMILIES.get_or_init(|| rows(include_str!("../data/rhymes.txt")).map(|line| line.split_whitespace().collect()).collect())
+}
+
+/// The family a word rhymes in, if it has one.
+pub fn family(word: &str) -> Option<usize> {
+    rhymes().iter().position(|family| family.iter().any(|w| w.eq_ignore_ascii_case(word)))
+}
+
+/// The numbers she says: what is counted, and what "What's next?" counts in twos,
+/// fives and tens.
+pub fn numbers() -> impl Iterator<Item = u32> {
+    (0..=20).chain((25..=50).step_by(5)).chain((60..=100).step_by(10))
+}
+
+/// A number in words, as she says it.
+pub fn number_name(n: u32) -> String {
+    const ONES: [&str; 20] = [
+        "zero",
+        "one",
+        "two",
+        "three",
+        "four",
+        "five",
+        "six",
+        "seven",
+        "eight",
+        "nine",
+        "ten",
+        "eleven",
+        "twelve",
+        "thirteen",
+        "fourteen",
+        "fifteen",
+        "sixteen",
+        "seventeen",
+        "eighteen",
+        "nineteen",
+    ];
+    const TENS: [&str; 10] = ["", "", "twenty", "thirty", "forty", "fifty", "sixty", "seventy", "eighty", "ninety"];
+    match n {
+        0..20 => ONES[n as usize].to_string(),
+        100 => "one hundred".to_string(),
+        _ if n.is_multiple_of(10) => TENS[(n / 10) as usize % 10].to_string(),
+        _ => format!("{}-{}", TENS[(n / 10) as usize % 10], ONES[(n % 10) as usize]),
+    }
+}
+
+/// The name of the clip that says a number.
+pub fn number_voice(n: u32) -> String {
+    format!("number-{n}")
+}
+
 /// Where the missing word of a story goes.
 pub const BLANK: &str = "___";
 
@@ -215,7 +271,15 @@ pub fn spoken() -> Vec<(String, String)> {
     all.extend(short_words().iter().chain(long_words()).map(|w| (word_voice(w), format!("{w}."))));
     all.extend(phrases().iter().map(|p| (p.id.to_string(), p.spoken.to_string())));
     all.extend(stories().iter().map(|s| (s.voice(), s.whole())));
+    all.extend(numbers().map(|n| {
+        let name = number_name(n);
+        (number_voice(n), format!("{}{}.", name[..1].to_uppercase(), &name[1..]))
+    }));
+    // The pictures and the rhymes are words too; many of them are already.
+    let more = crate::art::names().into_iter().chain(rhymes().iter().flatten().copied());
+    all.extend(more.map(|w| (word_voice(w), format!("{w}."))));
     all.sort();
+    all.dedup();
     all
 }
 
@@ -298,6 +362,28 @@ mod tests {
         let names: HashSet<_> = all.iter().map(|(name, _)| name).collect();
         assert_eq!(names.len(), all.len());
         assert!(all.iter().all(|(name, text)| !text.is_empty() && name.bytes().all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'-')));
+    }
+
+    #[test]
+    fn the_rhymes_are_families_apart_and_the_numbers_are_named() {
+        let families = rhymes();
+        assert!(families.len() >= 15 && families.iter().all(|family| family.len() >= 2));
+        let mut all = HashSet::new();
+        for (i, words) in families.iter().enumerate() {
+            for word in words {
+                assert!(word.bytes().all(|b| b.is_ascii_lowercase()) && (2..=6).contains(&word.len()), "{word}");
+                assert!(all.insert(*word), "{word} is in two families");
+                assert_eq!(family(word), Some(i));
+            }
+        }
+        assert_eq!(family("Cat"), family("hat"));
+        assert_eq!(family("dragon"), None);
+        assert_eq!((number_name(7), number_name(10), number_name(15)), ("seven".to_string(), "ten".to_string(), "fifteen".to_string()));
+        assert_eq!((number_name(20), number_name(25), number_name(100)), ("twenty".to_string(), "twenty-five".to_string(), "one hundred".to_string()));
+        assert_eq!(numbers().count(), 21 + 6 + 5);
+        let said = spoken();
+        assert!(said.contains(&("number-25".to_string(), "Twenty-five.".to_string())));
+        assert!(said.contains(&("word-snake".to_string(), "snake.".to_string())) && said.contains(&("word-flower".to_string(), "flower.".to_string())));
     }
 
     #[test]

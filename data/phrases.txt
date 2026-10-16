@@ -18,6 +18,34 @@ type|Can you type
 find|Can you find the letter
 starts|What does this word start with?
 fits|Which word fits?
+count-intro|Let's count!
+count-fish|How many fish?
+count-star|How many stars?
+count-heart|How many hearts?
+count-apple|How many apples?
+count-flower|How many flowers?
+count-duck|How many ducks?
+count-balloon|How many balloons?
+in-all|How many in all?
+left|Some went away. How many are left?
+plus|plus
+take-away|take away
+makes|makes
+bubbles-intro|Let's pop some bubbles!
+pop-letter|Pop the letter
+pop-word|Pop the word
+pop-rhyme|Pop a word that rhymes with
+pictures-intro|Let's look at pictures!
+where|Where is the
+what-is|What is it?
+spell|What is it? Type its name.
+letters-intro|Big letters and little letters!
+little|Find the little letter for
+big|Find the big letter for
+same|Which word is the same?
+pairs-intro|Find the pairs! Turn over two cards.
+next-intro|Let's find patterns!
+next|What comes next?
 yum-1|Yummy!
 yum-2|Yum, tasty!
 yum-3|Delicious!
