@@ -192,10 +192,11 @@ rhymes, the pictures (drawn as rows of letters, one for each color) and what Pin
 Kitty says. They were written for this game with children of 4 to 10 in mind.
 
 Her voice is about 470 short clips in [voice/](voice), made once with
-[Kokoro](https://huggingface.co/hexgrad/Kokoro-82M), a text-to-speech model that runs
-on your own computer, and then built into the game: its voice "Lily", raised in pitch,
-and a little brighter when she is pleased. [tools/voice.py](tools/voice.py) makes
-them again when the words change.
+[Chatterbox](https://github.com/resemble-ai/chatterbox), a text-to-speech model that
+runs on your own computer and can say a line with more or less feeling, and then built
+into the game: Kokoro's voice "Bella", raised in pitch, happiest when she cheers and
+gentle when she comforts. [tools/voice.py](tools/voice.py) makes them again when the
+words change.
 
 ## Development
 

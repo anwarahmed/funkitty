@@ -17,8 +17,8 @@ cargo test                                   # unit tests: words, voice, sound, 
 cargo clippy --all-targets -- -D warnings    # no warnings allowed
 cargo fmt                                    # rustfmt.toml: max_width 160
 cargo build --release && tests/e2e.sh        # the built program in tmux, install.sh, the updater
-cargo run -q -- voice-lines | ~/.cache/funkitty-voice/venv/bin/python tools/voice.py  # make the voice clips that are missing or out of date
-~/.cache/funkitty-voice/venv/bin/python tools/voice-check.py --retake 6          # list the clips a speech recognizer does not hear as written, and say those again
+cargo run -q -- voice-lines | ~/.cache/funkitty-voice/venv-chatterbox/bin/python tools/voice.py  # make the voice clips that are missing or out of date (setup: top of tools/voice.py)
+~/.cache/funkitty-voice/venv-chatterbox/bin/python tools/voice-check.py --retake 6          # list the clips a speech recognizer does not hear as written, and say those again
 FUNKITTY_LOG=/tmp/events.log cargo run       # record every key and mouse event received
 ```
 
@@ -140,7 +140,7 @@ mouse moves it to whatever it is over.
 - **The keyboard on the screen** makes the typing games playable by mouse (the user
   wants everything usable by both), and shows a beginner where the keys are.
 - **She speaks with recorded clips**, not a speech synthesizer at run time (the user
-  chose "generated": made once, now with Kokoro, before 0.2.0 with Piper). `tools/voice.py` makes one clip for each
+  chose "generated": made once, now with Chatterbox, before 0.3.0 with Kokoro, before 0.2.0 with Piper). `tools/voice.py` makes one clip for each
   line of `words::spoken()` and records the text in `voice/lines.tsv`; a test fails
   when a line has no clip or the clip was made from other text. What she says is
   several clips joined ("Can you type" + "cat"), so there are about 470 clips and not
@@ -148,28 +148,34 @@ mouse moves it to whatever it is over.
   sample against ffmpeg's.
 - **The voice's licence matters.** The clips are distributed with the program, so the
   voice must be one whose licence allows that. The current voice and its licence are
-  named at the top of `tools/voice.py` and credited in `voice/README.md`: Kokoro-82M
-  (Apache 2.0), voice `bf_lily`. Before it, Piper's `en_US-libritts_r-medium` (reader
+  named at the top of `tools/voice.py` and credited in `voice/README.md`: Chatterbox
+  (MIT), speaking in the voice of a clip Kokoro-82M (Apache 2.0) made in `af_bella`.
+  Before it, Kokoro's `bf_lily`; before that, Piper's `en_US-libritts_r-medium` (reader
   20, CC BY 4.0); `en_US-hfc_female` was turned down for its licence (CC BY-NC-SA).
-- **Her voice is the user's choice.** The user found Piper "robotic/androidish" and
-  asked (2026-10-16) for her to sound more like a cute kitty, with tone and emotion.
-  They listened to six Kokoro voices (`af_heart`, `af_bella`, `af_nicole`, `af_sky`,
-  `bf_lily`, a blend of heart and bella) at pitch 1.0, 1.15 and 1.3, against Piper as
-  it was, and chose `bf_lily` at 1.3 (`VOICE`, `PITCH`). Kokoro has no setting for
-  feelings, so the feeling is in `MOODS`: what she says when pleased (praise, parties,
-  yum, gifts, hello, the openings of games) is a little quicker and 5% higher;
-  comfort is slower and 3% lower; letters, words and numbers are slow and clear.
+- **Her voice is the user's choice, and their daughter's.** The user found Piper
+  "robotic/androidish" and asked (2026-10-16) for her to sound more like a cute kitty,
+  with tone and emotion; from six Kokoro voices they chose `bf_lily` at pitch 1.3
+  (0.2.0). Their daughter did not like Lily, and the user asked (2026-10-16, after
+  0.2.0) for an expressive voice, "not monotonous", with emotions in it. Kokoro has no
+  setting for feelings; Chatterbox does (exaggeration), and clones the voice of a
+  reference clip. The daughter heard five Chatterbox voices (Kokoro's `af_heart`,
+  `af_bella` and `af_sky` as references, Chatterbox's own, and Chatterbox Turbo with
+  `[laugh]` and `[happy]` tags) at pitch 1.15 and 1.3, against Lily, and chose Bella
+  at 1.3 (`VOICE`, `PITCH`). How much feeling goes in is `MOODS`: the most when she is
+  pleased (praise, parties, yum, gifts, hello, bye, the openings of games), less for
+  comfort, what she asks and the stories, least for letters, words and numbers.
   Earlier (2026-10-08) they had chosen Piper at 1.35 from 1.14 to 1.65.
-- **Lily says single words less clearly, and the user kept her knowing that.** Said
-  alone, a short word often comes out with a sound after it ("sheep" heard as
-  "Sheeba", "wall" as "wallet"). On the 44 words the recognizer missed most, Lily got
-  12 right where `af_bella` got 32 and `af_heart` 29; joined after "Can you type", 14
-  of 42 where Piper's clips got 30. Offered Bella instead, the user chose to keep
-  Lily with her words fixed up: every letter, word and number is said in quotation
-  marks (`tools/voice.py`), and `tools/voice-check.py --retake` cuts one that is
-  still misheard out of a sentence such as "Can you type sheep?". That took her from
-  304 to 375 of the 468 clips heard as written (Piper was at 338 of 372): 72 single
-  words, 9 letters, 6 numbers and 6 other clips are left, listed by the check.
+- **Chatterbox cannot say a short line alone.** "cat" came out as "but", "Wow!" as
+  "How?", "A" as "Anaj and Brett". So every letter, word and number is said as a
+  sentence of its own after another ("Here is a word. Cat." or "Ready? Cat.", by
+  turns), and a cheer of one or two words before "Good job!", and `tools/voice.py`
+  cuts it out at the quietest moment between the two, where the recognizer hears
+  them. Run on ("The word is, cat."), the cut kept the end of "is": "It's cat".
+  Chatterbox says a thing differently every time, so a retake is another take
+  (`tools/voice-check.py --retake`). That took the 468 clips to 442 heard as
+  written (Lily was at 375). Of the 26 left, about eight are words that sound like
+  what was heard ("bee" as "B", "deer" as "dear"); the rest are short words with a
+  short vowel ("net" as "not", "pan" as "pun"), listed by the check.
 - **The way back from the dressing room is one large button** along the bottom
   (the user asked, 2026-10-08, since 0.1.2), not the small "Esc Back" of the top row
   that the games have. It is still called "Esc Back", which `tests/e2e.sh` clicks.
@@ -253,19 +259,21 @@ mouse moves it to whatever it is over.
   time by trying A, B and C, and through counting by pressing every digit. The other
   new games it only starts; `cargo test` plays every game at every level to its party.
 - The voice: `tools/voice-check.py` has a speech recognizer transcribe every clip.
-  Lily often says a single word with a sound after it ("sheep" heard as "Sheeba"),
-  so after making clips run it with `--retake 6`: for a letter, word or number every
-  other take cuts it out of a sentence ("Can you type sheep?"), the others say it
-  alone a shade faster or slower, until a take is heard as written. A whole check
-  with retakes takes about two hours. What is left is mostly words that sound like another ("sea", "deer");
-  treat its list as clips to listen to, not as failures.
+  Chatterbox sometimes says a line wrong ("Try again!" as "Bye again!"), so after
+  making clips run it with `--retake 6`: each misheard clip is said again until a
+  take is heard as written. Making all the clips takes about four hours on a laptop's
+  processor, and the retakes a few hours more. What is left is mostly short words
+  with a short vowel and words that sound like another ("sea", "deer"); treat its list
+  as clips to listen to, not as failures. But look through it for a clip heard as a
+  rude word: 0.3.0's first set had four ("book", "hook", "chick", "six"), and such a
+  clip must be taken again until it is not.
 
 ## Known gaps
 
 - **Nobody has heard it.** The sound effects were checked as numbers only, and the
-  voice only through a speech recognizer, which hears 375 of the 468 clips as written.
-  The user chose her from samples of five sentences and of a few words, not by
-  hearing the 468 clips. Whoever
+  voice only through a speech recognizer, which hears 442 of the 468 clips as
+  written. The user's daughter chose her from a sample of ten lines, not by hearing
+  the 468 clips, and Chatterbox says each line differently every time it is made. Whoever
   listens first should expect to find clips to remake: delete them and run
   `tools/voice.py`, or change the numbers at its top. The single letters and short
   words the recognizer misses are the ones to start with (`tools/voice-check.py`).
