@@ -266,6 +266,43 @@ What no recognizer can say is whether she sounds *nice*. That needs a person.
   up, or Lily with Bella saying the words, the owner chose Lily with her words fixed
   up: in quotation marks, and a word still misheard cut out of a sentence ("Can you
   type sheep?") from where the recognizer hears it begin. That made 375 of 468.
+- **An expressive voice** (0.3.0). The owner's daughter did not like Lily, and the
+  owner asked for a voice that is expressive, right for a cute little kitty, not
+  monotonous, with emotions in it, and for a few options. Kokoro has no control for
+  feeling. Of the open models that do, Chatterbox (Resemble AI, MIT) runs on this
+  laptop's processor and has one knob for it, exaggeration; it speaks in the voice of
+  any reference clip. (Also considered: Dia and Step Audio EditX, Apache 2.0, heavier;
+  Orpheus, whose weights carry Llama's licence; Fish Speech and Higgs Audio, not for
+  commercial use.) Five options were made, each saying the same ten lines (hello, a
+  question, comfort, praise, a party, a treat, goodbye) with the most feeling when
+  pleased: Chatterbox in the voice of Kokoro's `af_heart`, `af_bella` and `af_sky`
+  reading a cheerful passage, in its own voice, and Chatterbox Turbo in Heart's voice
+  with its `[happy]`, `[laugh]` and `[chuckle]` tags. Each at pitch 1.15 and 1.3, beside
+  Lily as she was. How far the pitch moves, from the 5th to the 95th percentile, was
+  11 semitones for Lily and 13 to 19 for the new ones (Chatterbox's own voice the
+  most). The daughter chose Bella at 1.3.
+
+  Chatterbox says a short line badly alone: of thirteen letters, words and cheers said
+  alone in Bella's voice, the recognizer heard five right ("cat" as "but", "Wow!" as
+  "How?"). Said at the end of a sentence ("The word is, cat.") or before "Good job!"
+  and cut out of it, ten of ten were right, nine at the first take. The first cut was
+  where the recognizer heard the word begin, which kept the end of the word before
+  ("or A.", "is butterfly"); the cut is now at the quietest 20 ms between the two
+  words, with a comma in the sentence to make a pause there. Chatterbox says a thing
+  differently every time, so a retake is just another take.
+
+  The first whole set, cut out of "The word is, X.", was heard as written 317 times of
+  468, and 115 of the misses were words. Of 24 of those words said again, none was
+  right in that sentence, 12 as a sentence of their own after "Here is a word." and
+  13 after "Ready?", so a short line is now its own sentence after one of those two,
+  in turns. Six retakes took the set to 426; eight more for each of the 35 still
+  missed, and then nine more said as an exclamation ("Ready? Book!") keeping the take
+  heard closest to the word, took it to 442. (Those last two passes were a throwaway
+  script; tools/voice-check.py --retake does the first six.) Before them, four clips
+  the recognizer heard as rude words ("book", "hook", "chick", "six") were in the set;
+  none is now, and a check for that is worth repeating whenever the clips are made
+  again. What is left is short words with a short vowel and words that sound like
+  another.
 
 ## Decisions that were mine, not the owner's
 
@@ -284,5 +321,6 @@ second opinion is most likely.
 - **One switch for all sound**, her voice included.
 - **The words, sentences and stories**, all written for this game and read by nobody
   else yet.
-- **Reader 20, and the pace** of her voice. (The pitch has been the owner's since
-  the change above.)
+- **How much feeling** goes into each kind of line (`MOODS` in `tools/voice.py`), the
+  passage Bella reads for the reference clip, and the sentences short lines are cut
+  out of. (The voice and the pitch are the owner's daughter's choice.)

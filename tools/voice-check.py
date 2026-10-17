@@ -2,20 +2,17 @@
 """Listens to the clips in voice/ and lists those that are not heard as their text.
 
     tools/voice-check.py [FOLDER]             needs: ffmpeg, and pip install faster-whisper
-    tools/voice-check.py --retake 6           and has Kokoro say each of those again, up to
-                                              six times, keeping a take that is heard right
+    tools/voice-check.py --retake 6           and has Chatterbox say each of those again, up
+                                              to six times, keeping a take that is heard right
 
 A speech recognizer transcribes each clip and the result is compared with
 lines.tsv. It is a way to find clips worth listening to, not a verdict: a single
 letter or a short word alone is hard for a recognizer too ("sea" and "see" are the
 same sound), so expect false alarms there and trust your ears.
 
-Said alone, a short word often comes out with a sound after it ("sheep" as "Sheeba").
-That is what --retake is for. Every other take of a letter, word or number cuts it
-out of a sentence ("Can you type sheep?") from where the recognizer hears it begin,
-since in a sentence it is said whole; the takes between are the word alone a shade
-faster or slower (Kokoro says a thing the same way at the same speed). It keeps the
-first take the recognizer hears as written, and the old clip when none is.
+Chatterbox says a thing differently every time, so a retake is simply another take
+(tools/voice.py, speak). It keeps the first take the recognizer hears as written, and
+the old clip when none is.
 """
 import importlib.util, os, re, shutil, subprocess, sys, tempfile
 import numpy
@@ -39,21 +36,6 @@ def hear(clip):
                          check=True, stdout=subprocess.PIPE).stdout
     segments, _ = model.transcribe(numpy.frombuffer(raw, numpy.float32), language="en", beam_size=5)
     return " ".join(s.text for s in segments).strip()
-
-
-def cut(said, word):
-    """Keeps only the last word of a sentence in a clip Kokoro made, from where the
-    recognizer hears it begin. False when it does not hear that word last."""
-    import soundfile
-    samples, rate = soundfile.read(said, dtype="float32")
-    raw = subprocess.run(["ffmpeg", "-v", "error", "-i", said, "-ar", "16000", "-ac", "1", "-f", "f32le", "-"],
-                         check=True, stdout=subprocess.PIPE).stdout
-    segments, _ = model.transcribe(numpy.frombuffer(raw, numpy.float32), language="en", beam_size=5, word_timestamps=True)
-    words = [w for s in segments for w in s.words]
-    if not words or plain(words[-1].word) != plain(word):
-        return False
-    soundfile.write(said, samples[max(0, int((words[-1].start - 0.04) * rate)):], rate)
-    return True
 
 
 def right(name, text, heard):
@@ -80,10 +62,7 @@ for line in open(f"{folder}/lines.tsv"):
         continue
     for take in range(retakes):
         with tempfile.TemporaryDirectory() as tmp:
-            sentence = voice.carrier(name, text, take + 1)
-            voice.speak([(name, sentence or text)], tmp, take + 1)
-            if sentence and not cut(f"{tmp}/{name}.wav", text):
-                continue
+            voice.speak([(name, text)], tmp, take + 1)
             voice.finish(f"{tmp}/{name}.wav", f"{tmp}/take.wav")
             again = hear(f"{tmp}/take.wav")
             if right(name, text, again):
